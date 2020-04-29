@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/rootView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/tvDate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/lyToolbar"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="5dp"
+        android:background="@drawable/tv_bg_date_chat"
+        android:paddingStart="8dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="6dp"
+        android:text="6 April 2020"
+        android:textSize="13sp"
+        android:translationZ="2dp" />
+
+    <RelativeLayout
+        android:id="@+id/lyToolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?actionBarSize"
+        android:background="@color/bg_green"
+        android:translationZ="3dp">
+
+        <LinearLayout
+            android:id="@+id/lyProfileBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="25dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/text_white" />
+
+            <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/ivAvatar"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                android:src="@drawable/ic_avatar"
+                app:civ_border_width="0.1sp" />
+        </LinearLayout>
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/lyToolbar"
+        android:translationZ="1dp">
+
+        <EditText
+            android:id="@+id/etMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentBottom="true"
+            android:layout_toStartOf="@+id/btnSend"
+            android:hint="@string/write_message"
+            android:maxLines="4" />
+
+        <Button
+            android:id="@+id/btnSend"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:text="Send" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvChat"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_above="@+id/etMessage"
+            android:layout_alignParentStart="true"
+            android:layout_centerHorizontal="true"
+            android:scrollbars="vertical"
+            tools:listitem="@layout/card_view_message" />
+
+        <include
+            android:id="@+id/lyCiruclarProgressBar"
+            layout="@layout/progress_loading_wheel"
+            android:layout_width="25dp"
+            android:layout_height="25dp"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="40dp"
+            android:visibility="gone" />
+
+        <FrameLayout
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_alignBottom="@id/rvChat"
+            android:layout_alignParentEnd="true"
+            android:layout_marginBottom="5dp">
+
+            <FrameLayout
+                android:id="@+id/flBtnDownRecycler"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_circular_trasparent"
+                android:clickable="true"
+                android:clipChildren="true"
+                android:elevation="1dp"
+                android:focusable="true"
+                android:foreground="@drawable/ripple_round_effect"
+                android:visibility="invisible"
+                app:borderWidth="0dp">
+
+                <ImageView
+                    android:id="@+id/icArrows"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_arrows_down" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tvBadge"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/bg_badge"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:text="8"
+                android:textAlignment="center"
+                android:textColor="@android:color/white"
+                android:textSize="11sp"
+                android:translationZ="2dp"
+                android:visibility="invisible" />
+        </FrameLayout>
+    </RelativeLayout>
+
+</RelativeLayout>

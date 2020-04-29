@@ -1,0 +1,25 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/bg_gris</item>
+        <item name="colorPrimaryDark">@color/bg_gris_oscuro</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:colorEdgeEffect">@color/bg_gris_oscuro_2_3</item>
+        <!-- Custom State Bar -->
+        <!--        <item name="android:statusBarColor">@color/bg_negro</item>-->
+        <!--        <item name="android:windowLightStatusBar">true</item>-->
+    </style>
+
+    <!-- Custom TextInputLayout Error. -->
+    <style name="errorAppearance" parent="@android:style/TextAppearance">
+        <item name="android:textColor">@color/bg_rojo</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="SplashTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@drawable/bg_splash</item>
+    </style>
+
+</resources>

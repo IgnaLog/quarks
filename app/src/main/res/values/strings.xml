@@ -1,0 +1,126 @@
+<resources>
+    <string name="app_name" translatable="false">Quarks</string>
+
+    <!--  URLs Local -->
+    <string name="url_generate_username" translatable="false">http://192.168.0.161:8080/generate-username</string>
+    <string name="url_exists_username" translatable="false">http://192.168.0.161:8080/exists-username</string>
+    <string name="url_exists_email" translatable="false">http://192.168.0.161:8080/exists-email</string>
+    <string name="url_signin" translatable="false">http://192.168.0.161:8080/signin</string>
+    <string name="url_upload_image" translatable="false">http://192.168.0.161:8080/upload-image</string>
+    <string name="url_get_image" translatable="false"> http://192.168.0.161:8080/uploads/</string>
+    <string name="url_login" translatable="false">http://192.168.0.161:8080/login</string>
+    <string name="url_login_help" translatable="false">http://192.168.0.161:8080/login-help</string>
+    <string name="url_login_code" translatable="false">http://192.168.0.161:8080/login-code</string>
+    <string name="url_search_contact" translatable="false">http://192.168.0.161:8080/search-contacts</string>
+    <string name="url_chat" translatable="false">http://192.168.0.161:8080/</string>
+
+    <!--  URLs -->
+    <!--    <string name="url_generate_username" translatable="false">https://node-quarks.herokuapp.com/generate-username</string>-->
+    <!--    <string name="url_exists_username" translatable="false">https://node-quarks.herokuapp.com/exists-username</string>-->
+    <!--    <string name="url_exists_email" translatable="false">https://node-quarks.herokuapp.com/exists-email</string>-->
+    <!--    <string name="url_signin" translatable="false">https://node-quarks.herokuapp.com/signin</string>-->
+    <!--    <string name="url_upload_image" translatable="false">https://node-quarks.herokuapp.com/upload-image</string>-->
+    <!--    <string name="url_get_image" translatable="false"> https://node-quarks.herokuapp.com/uploads/</string>-->
+    <!--    <string name="url_login" translatable="false">https://node-quarks.herokuapp.com/login</string>-->
+    <!--    <string name="url_login_help" translatable="false">https://node-quarks.herokuapp.com/login-help</string>-->
+    <!--    <string name="url_login_code" translatable="false">https://node-quarks.herokuapp.com/login-code</string>-->
+    <!--    <string name="url_search_contact" translatable="false">https://node-quarks.herokuapp.com/search-contacts</string>-->
+    <!--    <string name="url_chat" translatable="false">https://node-quarks.herokuapp.com/</string>-->
+
+    <!--  dialog_registering  -->
+    <string name="registering">Registrando…</string>
+
+    <!--  dialog_processing  -->
+    <string name="processing">Procesando…</string>
+
+    <!--  dialog_login -->
+    <string name="dialog_username_not_found_title">Nombre de usuario incorrecto</string>
+    <string name="dialog_username_not_found_subtitle">Parece que el nombre de usuario que has introducido no pertenece a ninguna cuenta. Comprueba tu nombre de usuario y vuelve a intentarlo.</string>
+    <string name="dialog_password_not_found_title">Contraseña incorrecta para</string>
+    <string name="dialog_password_not_found_subtitle">La contraseña que has escrito no es correcta. Vuelve a intentarlo.</string>
+    <string name="dialog_password_not_found_title_retries">¿Has olvidado la contraseña de</string>
+    <string name="dialog_password_not_found_subtitle_retries">Podemos enviarte un correo electrónico para ayudarte a volver a entrar en tu cuenta.</string>
+    <string name="dialog_account_not_found_try_again">Volver a intentarlo</string>
+    <string name="dialog_account_not_found_get_help">Obtener ayuda</string>
+    <string name="dialog_error_network_title">Error</string>
+    <string name="dialog_error_network_subtitle">Se ha producido un error de red desconocido.</string>
+    <string name="dialog_error_close">Cerrar</string>
+    <string name="dialog_token_subtitle_expired">El código de verificación ha expirado. Prueba a reintentar el proceso.</string>
+    <string name="dialog_token_subtitle_invalid">El código de verificación es incorrecto. El código lo encontrarás en tu correo electrónico. También revisa el correo spam.</string>
+    <string name="dialog_token_retry">Reintentar</string>
+
+    <!--  common_mistakes  -->
+    <string name="error_connection">No hemos podido completar tu solicitud. Vuelve a intentarlo en unos minutos.</string>
+    <string name="error_other_account_using_email">Hay otra cuenta usando el correo electrónico.</string>
+    <string name="error_other_account_using_username">Hay otra cuenta usando el nombre de usuario.</string>
+    <string name="error_network">Se ha producido un error de red.</string>
+    <string name="error_invalid_application">Se ha producido un error al resolver tu solicitud.</string>
+    <string name="error_size_image">El tamaño de la imagen es muy pesado. Prueba con otra imagen.</string>
+
+    <!--  activity_start  -->
+    <string name="enter">Entrar</string>
+    <string name="create_new_account">Crear cuenta nueva</string>
+
+    <!--  activity_signin  -->
+    <string name="next">Siguiente</string>
+    <string name="email_error">Introduce un correo electrónico válido.</string>
+    <string name="already_have_an_account">¿Ya tienes una cuenta? Inicia sesión.</string>
+    <string name="login">Inicia sesión</string>
+    <string name="email">Correo electrónico</string>
+    <string name="exists_email">El correo electrónico introducido ya está en uso. Prueba a utilizar otro distinto.</string>
+
+    <!--  activity_login  -->
+    <string name="forgotten_data_session">¿Has olvidado tus datos de inicio de sesión? Obtén ayuda.</string>
+    <string name="sign_up_here">¿No tienes una cuenta? Regístrate.</string>
+
+    <!--  activity_login_help  -->
+    <string name="email_or_username">Correo electrónico o nombre de usuario</string>
+    <string name="title_get_help">Ayuda para iniciar sesión</string>
+    <string name="main_title_get_help">Recupera tu cuenta</string>
+    <string name="main_subtitle_get_help">Introduce el nombre de usuario de Quarks o el correo electrónico vinculados a tu cuenta.</string>  <!--  app name  -->
+    <string name="error_user_not_found">No se ha encontrado el usuario.</string>
+
+    <!--  activity_name_pass  -->
+    <string name="title_name_and_contra">NOMBRE Y CONTRASEÑA</string>
+    <string name="full_name">Nombre completo</string>
+    <string name="password">Contraseña</string>
+    <string name="usual_password">Esta contraseña es habitual. Prueba otra más difícil de averiguar.</string>
+
+    <!--  activity_welcome  -->
+    <string name="politics"><![CDATA[Al hacer clic en \"Siguiente\", aceptas nuestras Condiciones. Obtén más información sobre cómo recopilamos, usamos y compartimos tus datos en la Política de datos, así como el uso que hacemos de las cookies y tecnologías similares en nuestra Política de cookies.]]></string>
+    <string name="change_username">Cambiar nombre de usuario</string>
+    <string name="welcome_text">TE DAMOS LA BIENVENIDA A QUARKS,</string>  <!--  app name  -->
+    <string name="text_recommendation">Empieza a buscar actividades cerca de ti o busca a tus amigos y comienza actividades con ellos. Puedes cambiar tu nombre de usuario cuando quieras.</string>
+
+    <!--  activity_username  -->
+    <string name="username">Nombre de usuario</string>
+    <string name="title_change_username">CAMBIAR NOMBRE DE USUARIO</string>
+    <string name="subtitle_change_username">Elige un nombre de usuario para tu cuenta. Lo puedes cambiar cuando quieras.</string>
+
+    <!--  activity_no_username  -->
+    <string name="title_username">NOMBRE DE USUARIO</string>
+    <string name="exists_username">El nombre de usuario introducido ya está en uso. Prueba a utilizar otro distinto.</string>
+
+    <!--  activity_photo  -->
+    <string name="subtitle_add_photo">Añade una foto del perfil para que tus amigos sepan que eres tú.</string>
+    <string name="add_a_photo">Añadir una foto</string>
+    <string name="omit">Omitir</string>
+    <string name="add_photo_of_profile">Añadir foto del perfil</string>
+    <string name="added_profile_photo">Se ha añadido la foto del perfil</string>
+    <string name="change_photo">Cambiar foto</string>
+
+    <!--  activity_token  -->
+    <string name="code_token">Código</string>
+    <string name="token_subtitle">Introduce el código de verificación que te hemos enviado a tu correo electrónico. Si no lo has recibido, espere unos minutos o revisa tu correo spam.</string>
+
+    <!--  activity_contacts  -->
+    <string name="search">Busca</string>
+
+    <!--  activity_chat  -->
+    <string name="write_message">Escribe un mensaje</string>
+    <string name="yesterday">ayer</string>
+    <string name="today">hoy</string>
+
+
+
+</resources>
