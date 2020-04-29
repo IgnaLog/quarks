@@ -77,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
         cursor = dataBaseHelper.getAllConversations();
         fetchData(true, cursor); // First data load
 
+        /** LISTENERS */
 
         rvConversations.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -112,14 +113,26 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
     /**
-     * METHODS
+     * OVERRIDE
      **/
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        cursor = dataBaseHelper.getAllConversations();
+        fetchData(true, cursor); // Load conversations again
+    }
 
     @Override
     public void onBackPressed() {
         moveTaskToBack(true); // Pressing the back button of Android, we would go to the end of the stack of open activities. In this case it would go to the SplashActivity but it is closed, therefore, the app would be minimized
     }
+
+    /**
+     * FUNCTIONS
+     **/
 
     /* Function that loads the cursor data into the ArrayList */
     private void loadItems(Cursor c) {

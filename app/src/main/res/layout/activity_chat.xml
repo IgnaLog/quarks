@@ -31,16 +31,22 @@
 
         <LinearLayout
             android:id="@+id/lyProfileBack"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="@drawable/ripple_avatar_photo_effect"
+            android:layout_marginStart="4dp"
+            android:padding="2dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
+
             android:orientation="horizontal">
 
             <ImageView
-                android:layout_width="25dp"
-                android:layout_height="30dp"
+                android:layout_width="27dp"
+                android:layout_height="27dp"
                 android:layout_gravity="center"
-                android:src="@drawable/ic_arrow_back"
+                android:src="@drawable/ic_arrow_back_profile"
                 android:tint="@color/text_white" />
 
             <de.hdodenhof.circleimageview.CircleImageView
@@ -50,6 +56,18 @@
                 android:src="@drawable/ic_avatar"
                 app:civ_border_width="0.1sp" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvUsername"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tony"
+            android:textSize="18sp"
+            android:textColor="@color/bg_white"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp"
+            android:layout_centerVertical="true"
+            android:layout_toEndOf="@id/lyProfileBack"/>
 
     </RelativeLayout>
 

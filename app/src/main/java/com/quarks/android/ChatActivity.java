@@ -17,6 +17,7 @@ import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -51,13 +52,14 @@ public class ChatActivity extends AppCompatActivity {
 
     private RelativeLayout rootView;
     private LoadingWheel loadingWheel;
+    private LinearLayout lyProfileBack;
     private FrameLayout flBtnDownRecycler;
     private View lyCiruclarProgressBar;
     private RecyclerView rvChat;
     private MessagesAdapter adapter;
     private ArrayList<MessageItem> alMessage = new ArrayList<MessageItem>();
     private EditText etMessage;
-    private TextView tvDate, tvBadge;
+    private TextView tvDate, tvBadge, tvUsername;
     private Socket socket;
     private Button btnSend;
     private Context context = ChatActivity.this;
@@ -250,6 +252,13 @@ public class ChatActivity extends AppCompatActivity {
                 }
             }
         });
+
+        lyProfileBack.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
     }
 
     /**
@@ -327,6 +336,8 @@ public class ChatActivity extends AppCompatActivity {
         flBtnDownRecycler = findViewById(R.id.flBtnDownRecycler);
         tvDate = findViewById(R.id.tvDate);
         tvBadge = findViewById(R.id.tvBadge);
+        lyProfileBack = findViewById(R.id.lyProfileBack);
+        tvUsername = findViewById(R.id.tvUsername);
 
         animDateAppear = ObjectAnimator.ofFloat(tvDate, "translationY", 0f, 110f);
         animDateAppear.setInterpolator(new DecelerateInterpolator());
@@ -353,6 +364,8 @@ public class ChatActivity extends AppCompatActivity {
         username = Preferences.getUserName(context);
         receiverId = getIntent().getStringExtra("receiverId");
         receiverUsername = getIntent().getStringExtra("receiverUsername"); // We capture the username and id of the previous activity
+
+        tvUsername.setText(receiverUsername);
     }
 
     /* Returns if the keyboard has appeared or been hidden since the last time */

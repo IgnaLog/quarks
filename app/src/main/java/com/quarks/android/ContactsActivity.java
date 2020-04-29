@@ -126,7 +126,7 @@ public class ContactsActivity extends AppCompatActivity {
     }
 
     /**
-     * METHODS
+     * FUNCTIONS
      **/
 
     /**
