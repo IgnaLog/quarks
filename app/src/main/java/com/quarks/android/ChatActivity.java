@@ -74,7 +74,7 @@ public class ChatActivity extends AppCompatActivity {
     private boolean isScrolling = false;
     private boolean endOfScroll = false;
     private int firstVisibleItem, lastVisibleItem, totalItems, scrollOutItems, totalCursor;
-    private static int limitItemsToScroll = 20; // Limit number to start loading batch messages
+    private static int limitItemsToScroll = 100000; // Limit number to start loading batch messages
     private static int itemsToShow = 20; // Number of messages to show at the beginning
     private static int nextItemsToShow = 50; // Number of messages to display each time there is a new load
     private static int indexItems = 0; // Indicator to know where we are in the message cursor of the local database

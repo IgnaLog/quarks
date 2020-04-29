@@ -72,11 +72,6 @@ public class MainActivity extends AppCompatActivity {
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR); // The color of the icons is adapted, if not white
         getWindow().setStatusBarColor(getResources().getColor(R.color.bg_gris)); // Bar color
 
-        /** CODE **/
-
-        cursor = dataBaseHelper.getAllConversations();
-        fetchData(true, cursor); // First data load
-
         /** LISTENERS */
 
         rvConversations.addOnScrollListener(new RecyclerView.OnScrollListener() {
@@ -121,6 +116,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (adapter != null) {
+            adapter.Clear();
+        }
         cursor = dataBaseHelper.getAllConversations();
         fetchData(true, cursor); // Load conversations again
     }
