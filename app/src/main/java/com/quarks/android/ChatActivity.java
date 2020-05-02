@@ -86,7 +86,7 @@ public class ChatActivity extends AppCompatActivity {
     private int previousHeightDiff = 0;
     private Animation animBtnDownAppear, animBtnDownDisappear;
     private int oldLastVisibleItem = -1;
-    private int pendingMessages = 0;
+    private int badgeMessages = 0;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -115,6 +115,7 @@ public class ChatActivity extends AppCompatActivity {
         }
         socket.connect();
         socket.on("connected", connected);
+        socket.on("pending-messages", pendingMessages);
         socket.on("send-message", listeningMessages);
 
         /**  LISTENERS  **/
@@ -182,7 +183,7 @@ public class ChatActivity extends AppCompatActivity {
                     if ((lastVisibleItem == totalItems - 1) && (flBtnDownRecycler.getVisibility() == View.VISIBLE)) { // Make the conversation scroll button invisible and reset the badge
                         flBtnDownRecycler.setVisibility(View.INVISIBLE);
                         flBtnDownRecycler.startAnimation(animBtnDownDisappear);
-                        pendingMessages = 0;
+                        badgeMessages = 0;
                         tvBadge.setVisibility(View.INVISIBLE);
                     } else if ((lastVisibleItem <= totalItems - 2) && (flBtnDownRecycler.getVisibility() != View.VISIBLE)) { // Make the conversation scroll button visible
                         flBtnDownRecycler.setVisibility(View.VISIBLE);
@@ -239,7 +240,7 @@ public class ChatActivity extends AppCompatActivity {
             public void onClick(View v) {
                 /* We scroll down the conversation and make the scroll button invisible */
                 rvChat.scrollToPosition(alMessage.size() - 1);
-                pendingMessages = 0;
+                badgeMessages = 0;
                 tvBadge.setVisibility(View.INVISIBLE);
             }
         });
@@ -274,12 +275,29 @@ public class ChatActivity extends AppCompatActivity {
                 public void run() {
                     JSONObject jsonObjectData = new JSONObject();
                     try {
+                        // My user
                         jsonObjectData.put("userId", userId);
                         jsonObjectData.put("username", username);
+                        // The person with whom I communicate, this is util for receive pending messages in the server.
+                        jsonObjectData.put("receiverId", receiverId);
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
                     socket.emit("add-user", jsonObjectData);
+                }
+            });
+        }
+    };
+
+    /* We retrieve pending messages*/
+    private Emitter.Listener pendingMessages = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject messages = (JSONObject) args[0];
+                    System.out.println(messages);
                 }
             });
         }
@@ -494,11 +512,11 @@ public class ChatActivity extends AppCompatActivity {
                 rvChat.scrollToPosition(adapter.getItemCount() - 1); // We move to the end of the conversation
             } else {
                 // We update the number of messages on the badge
-                pendingMessages++;
-                if (pendingMessages > 999) {
-                    pendingMessages = 999;
+                badgeMessages++;
+                if (badgeMessages > 999) {
+                    badgeMessages = 999;
                 }
-                tvBadge.setText(String.valueOf(pendingMessages));
+                tvBadge.setText(String.valueOf(badgeMessages));
                 tvBadge.setVisibility(View.VISIBLE);
             }
         } else {
