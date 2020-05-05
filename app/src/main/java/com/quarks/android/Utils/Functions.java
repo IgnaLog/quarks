@@ -3,6 +3,8 @@ package com.quarks.android.Utils;
 import android.animation.LayoutTransition;
 import android.app.Activity;
 import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -11,6 +13,8 @@ import android.graphics.drawable.ColorDrawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Display;
@@ -93,7 +97,7 @@ public class Functions {
     }
 
     /* It converts the date and time of the messages saved in the local database into hour minute format with its default timezone */
-    public static String formatTime(String time) {
+    public static String formatTime(String time, Context context) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
         Date date = null;
@@ -109,6 +113,14 @@ public class Functions {
             convertedTime = requiredDateFormat.format(date);
         }
         return convertedTime;
+    }
+
+    private static boolean isTimeAutomatic(Context c) {
+        return Settings.Global.getInt(c.getContentResolver(), Settings.Global.AUTO_TIME, 0) == 1;
+    }
+
+    private static boolean isTimeZoneAutomatic(Context c) {
+        return Settings.Global.getInt(c.getContentResolver(), Settings.Global.AUTO_TIME_ZONE, 0) == 1;
     }
 
     /* Show the loading dialog */

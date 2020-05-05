@@ -33,6 +33,7 @@ import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.Functions;
 import com.quarks.android.Utils.Preferences;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -296,8 +297,26 @@ public class ChatActivity extends AppCompatActivity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    JSONObject messages = (JSONObject) args[0];
-                    System.out.println(messages);
+                    JSONArray messages = (JSONArray) args[0];
+                    try {
+                        if (messages != null) {
+                            for (int i = 0; i < messages.length(); i++) {
+                                JSONObject jsonObject = messages.getJSONObject(i);
+                                String message = jsonObject.getString("message");
+                                String mongoTime = jsonObject.getString("time");
+                                String time = formatMongoTime(mongoTime);
+                                System.out.println("+++++++++++++++++++++++++++++++++++++++++++++" + time);
+                                int channel = 2;
+
+                                values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, time); // We store the message into the local data base and we obtain the id and time from the record stored
+                                String id = values.get("id");
+                                String dateTime = values.get("time"); // Proviene de la base de datos local al guardar el registro
+                                addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context)); // Add message from the receiver to the activity
+                            }
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
                 }
             });
         }
@@ -320,10 +339,10 @@ public class ChatActivity extends AppCompatActivity {
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
-                    values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel); // We store the message into the local data base and we obtain the id and time from the record stored
+                    values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, ""); // We store the message into the local data base and we obtain the id and time from the record stored
                     String id = values.get("id");
                     String dateTime = values.get("time"); // Proviene de la base de datos local al guardar el registro
-                    addMessage(id, message, channel, formatTime(dateTime), formatDate(dateTime, context)); // Add message from the receiver to the activity
+                    addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context)); // Add message from the receiver to the activity
                 }
             });
         }
@@ -397,13 +416,24 @@ public class ChatActivity extends AppCompatActivity {
         return hasChanged;
     }
 
+    public String formatMongoTime(String mongoTime) {
+        String[] parts = mongoTime.split("T");
+        String date = parts[0];
+        String time = parts[1];
+
+        String[] partsOfTime = time.split("\\.");
+        String realTime = partsOfTime[0];
+
+        return date + " " + realTime;
+    }
+
     /* Function that loads the cursor data into the ArrayList */
     public void loadItems(@NonNull Cursor c) {
         alMessage.add(new MessageItem(
                 c.getString(c.getColumnIndex("id")),
                 c.getString(c.getColumnIndex("message")),
                 c.getInt(c.getColumnIndex("channel")),
-                Functions.formatTime(c.getString(c.getColumnIndex("time"))),
+                Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
                 Functions.formatDate(c.getString(c.getColumnIndex("time")), context)
         ));
     }
@@ -442,7 +472,7 @@ public class ChatActivity extends AppCompatActivity {
                                     c.getString(c.getColumnIndex("id")),
                                     c.getString(c.getColumnIndex("message")),
                                     c.getInt(c.getColumnIndex("channel")),
-                                    Functions.formatTime(c.getString(c.getColumnIndex("time"))),
+                                    Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
                                     Functions.formatDate(c.getString(c.getColumnIndex("time")), context)
                             ));
                             c.moveToNext();
@@ -460,7 +490,7 @@ public class ChatActivity extends AppCompatActivity {
                                     c.getString(c.getColumnIndex("id")),
                                     c.getString(c.getColumnIndex("message")),
                                     c.getInt(c.getColumnIndex("channel")),
-                                    Functions.formatTime(c.getString(c.getColumnIndex("time"))),
+                                    Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
                                     Functions.formatDate(c.getString(c.getColumnIndex("time")), context)
                             ));
                             c.moveToNext();
@@ -478,10 +508,10 @@ public class ChatActivity extends AppCompatActivity {
     /* Save a message in the local database, update the adapter and send the message to the addressee */
     public void sendMessage(String message, int channel) {
         etMessage.setText("");
-        values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel); // We store the message into the local data base and we obtain the id and time from the record stored
+        values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, ""); // We store the message into the local data base and we obtain the id and time from the record stored
         String id = values.get("id");
         String dateTime = values.get("time");
-        addMessage(id, message, channel, formatTime(dateTime), formatDate(dateTime, context)); // Add message from the sender to the activity
+        addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context)); // Add message from the sender to the activity
         JSONObject jsonObjectData = new JSONObject(); // We prepare a jsonObject to send the message to the server
         try {
             jsonObjectData.put("userId", receiverId); // Who is going to receive the message (receiver)
