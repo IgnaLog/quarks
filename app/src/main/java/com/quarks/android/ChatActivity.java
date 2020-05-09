@@ -5,12 +5,15 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewTreeObserver;
+import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
@@ -46,6 +49,7 @@ import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
 
+import static com.quarks.android.Utils.Functions.dpToPx;
 import static com.quarks.android.Utils.Functions.formatDate;
 import static com.quarks.android.Utils.Functions.formatTime;
 
@@ -74,7 +78,7 @@ public class ChatActivity extends AppCompatActivity {
     private LinearLayoutManager linearLayoutManager;
     private boolean isScrolling = false;
     private boolean endOfScroll = false;
-    private int firstVisibleItem, lastVisibleItem, totalItems, scrollOutItems, totalCursor;
+    private int firstVisibleItem, firstCompletelyVisibleItem, lastVisibleItem, totalItems, scrollOutItems, totalCursor;
     private static int limitItemsToScroll = 20; // Limit number to start loading batch messages
     private static int itemsToShow = 20; // Number of messages to show at the beginning
     private static int nextItemsToShow = 50; // Number of messages to display each time there is a new load
@@ -88,6 +92,7 @@ public class ChatActivity extends AppCompatActivity {
     private Animation animBtnDownAppear, animBtnDownDisappear;
     private int oldLastVisibleItem = -1;
     private int badgeMessages = 0;
+    private boolean newMessage = false; // Boolean to prevent tvDate animation appear
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -116,7 +121,7 @@ public class ChatActivity extends AppCompatActivity {
         }
         socket.connect();
         socket.on("connected", connected);
-        socket.on("pending-messages", pendingMessages);
+        socket.on("pending-messages", getPendingMessages);
         socket.on("send-message", listeningMessages);
 
         /**  LISTENERS  **/
@@ -125,6 +130,18 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
+
+                /* We have reached the end of the recyclerview and we hide the tvDate */
+                if (!recyclerView.canScrollVertically(-1) && endOfScroll) {
+                    if (animDateAppear.isStarted()) {
+                        animDateAppear.cancel();
+                    }
+                    animDateDisappear.end();
+                    animDateDisappear.cancel();
+                    appearFinished = false;
+                    disappearFinished = true;
+                }
+
                 /* Scroll state changes to motion, including inertial motion */
                 if (newState == RecyclerView.SCROLL_STATE_SETTLING || newState == RecyclerView.SCROLL_STATE_DRAGGING) {
                     isScrolling = true;
@@ -194,44 +211,59 @@ public class ChatActivity extends AppCompatActivity {
 
                 /* We load a drop-down animation of the date of the messages. It is calculated for each new item that appears on the screen */
                 firstVisibleItem = linearLayoutManager.findFirstVisibleItemPosition();
+                firstCompletelyVisibleItem = linearLayoutManager.findFirstCompletelyVisibleItemPosition();
                 View view = linearLayoutManager.findViewByPosition(firstVisibleItem);
                 TextView date = view.findViewById(R.id.tvDate);
                 tvDate.setText(date.getText().toString());
 
-                if (oldVisibleItem != firstVisibleItem) {
+                if (oldVisibleItem != firstVisibleItem && !newMessage) {
                     oldVisibleItem = firstVisibleItem;
-                    if (!tvDate.getText().toString().equals(getResources().getString(R.string.today).toUpperCase()) && !hasKeyboardStateChanged()) {
-                        if (!animDateAppear.isRunning() && (!appearFinished || disappearFinished)) {
-                            disappearFinished = false;
-                            animDateAppear.addListener(new AnimatorListenerAdapter() {
-                                @Override
-                                public void onAnimationEnd(Animator animation) {
-                                    super.onAnimationEnd(animation);
-                                    appearFinished = true;
-                                    if (!isScrolling) {
-                                        animDateDisappear.addListener(new AnimatorListenerAdapter() {
-                                            @Override
-                                            public void onAnimationEnd(Animator animation) {
-                                                super.onAnimationEnd(animation);
-                                                appearFinished = false;
-                                                disappearFinished = true;
-                                            }
-                                        });
-                                        animDateDisappear.start();
+                    if (!hasKeyboardStateChanged()) {
+                        if (!tvDate.getText().toString().equals(getResources().getString(R.string.today).toUpperCase())) {
+                            if (!animDateAppear.isRunning() && (!appearFinished || disappearFinished)) {
+                                disappearFinished = false;
+                                animDateAppear.addListener(new AnimatorListenerAdapter() {
+                                    @Override
+                                    public void onAnimationEnd(Animator animation) {
+                                        super.onAnimationEnd(animation);
+                                        appearFinished = true;
+                                        if (!isScrolling) {
+                                            animDateDisappear.addListener(new AnimatorListenerAdapter() {
+                                                @Override
+                                                public void onAnimationEnd(Animator animation) {
+                                                    super.onAnimationEnd(animation);
+                                                    appearFinished = false;
+                                                    disappearFinished = true;
+                                                }
+                                            });
+                                            animDateDisappear.start();
+                                        }
                                     }
-                                }
-                            });
-                            animDateAppear.start();
+                                });
+                                animDateAppear.start();
+                            }
+                        } else {
+                            if (animDateAppear.isStarted()) {
+                                animDateAppear.cancel();
+                            }
+                            animDateDisappear.end();
+                            animDateDisappear.cancel();
+                            appearFinished = false;
+                            disappearFinished = true;
                         }
                     } else {
-                        if (animDateAppear.isStarted()) {
-                            animDateAppear.cancel();
+                        if (tvDate.getText().toString().equals(getResources().getString(R.string.today).toUpperCase())) {
+                            if (animDateAppear.isStarted()) {
+                                animDateAppear.cancel();
+                            }
+                            animDateDisappear.end();
+                            animDateDisappear.cancel();
+                            appearFinished = false;
+                            disappearFinished = true;
                         }
-                        animDateDisappear.end();
-                        animDateDisappear.cancel();
-                        appearFinished = false;
-                        disappearFinished = true;
                     }
+                } else {
+                    newMessage = false;
                 }
             }
         });
@@ -291,7 +323,7 @@ public class ChatActivity extends AppCompatActivity {
     };
 
     /* We retrieve pending messages*/
-    private Emitter.Listener pendingMessages = new Emitter.Listener() {
+    private Emitter.Listener getPendingMessages = new Emitter.Listener() {
         @Override
         public void call(final Object... args) {
             runOnUiThread(new Runnable() {
@@ -300,18 +332,24 @@ public class ChatActivity extends AppCompatActivity {
                     JSONArray messages = (JSONArray) args[0];
                     try {
                         if (messages != null) {
+                           int pendingMessages = 0;
                             for (int i = 0; i < messages.length(); i++) {
                                 JSONObject jsonObject = messages.getJSONObject(i);
                                 String message = jsonObject.getString("message");
                                 String mongoTime = jsonObject.getString("time");
                                 String time = formatMongoTime(mongoTime);
-                                System.out.println("+++++++++++++++++++++++++++++++++++++++++++++" + time);
                                 int channel = 2;
+                                // For the first message, we mark the new messages with the number of messages to read
+                                if(i == 0) {
+                                    pendingMessages = messages.length();
+                                } else{
+                                    pendingMessages = 0;
+                                }
 
                                 values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, time); // We store the message into the local data base and we obtain the id and time from the record stored
                                 String id = values.get("id");
                                 String dateTime = values.get("time"); // Proviene de la base de datos local al guardar el registro
-                                addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context)); // Add message from the receiver to the activity
+                                addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages,false); // Add message from the receiver to the activity
                             }
                         }
                     } catch (JSONException e) {
@@ -342,7 +380,7 @@ public class ChatActivity extends AppCompatActivity {
                     values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, ""); // We store the message into the local data base and we obtain the id and time from the record stored
                     String id = values.get("id");
                     String dateTime = values.get("time"); // Proviene de la base de datos local al guardar el registro
-                    addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context)); // Add message from the receiver to the activity
+                    addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context),0,true); // Add message from the receiver to the activity
                 }
             });
         }
@@ -434,7 +472,8 @@ public class ChatActivity extends AppCompatActivity {
                 c.getString(c.getColumnIndex("message")),
                 c.getInt(c.getColumnIndex("channel")),
                 Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
-                Functions.formatDate(c.getString(c.getColumnIndex("time")), context)
+                Functions.formatDate(c.getString(c.getColumnIndex("time")), context),
+                0
         ));
     }
 
@@ -473,7 +512,8 @@ public class ChatActivity extends AppCompatActivity {
                                     c.getString(c.getColumnIndex("message")),
                                     c.getInt(c.getColumnIndex("channel")),
                                     Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
-                                    Functions.formatDate(c.getString(c.getColumnIndex("time")), context)
+                                    Functions.formatDate(c.getString(c.getColumnIndex("time")), context),
+                                    0
                             ));
                             c.moveToNext();
                         }
@@ -491,7 +531,8 @@ public class ChatActivity extends AppCompatActivity {
                                     c.getString(c.getColumnIndex("message")),
                                     c.getInt(c.getColumnIndex("channel")),
                                     Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
-                                    Functions.formatDate(c.getString(c.getColumnIndex("time")), context)
+                                    Functions.formatDate(c.getString(c.getColumnIndex("time")), context),
+                                    0
                             ));
                             c.moveToNext();
                         }
@@ -511,7 +552,7 @@ public class ChatActivity extends AppCompatActivity {
         values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, ""); // We store the message into the local data base and we obtain the id and time from the record stored
         String id = values.get("id");
         String dateTime = values.get("time");
-        addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context)); // Add message from the sender to the activity
+        addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context),0, true); // Add message from the sender to the activity
         JSONObject jsonObjectData = new JSONObject(); // We prepare a jsonObject to send the message to the server
         try {
             jsonObjectData.put("userId", receiverId); // Who is going to receive the message (receiver)
@@ -526,14 +567,16 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     /* Returns if the keyboard has appeared or been hidden since the last time */
-    public void addMessage(String id, String message, int channel, String time, String date) {
-        alMessage.add(new MessageItem(
-                id,
-                message,
-                channel,
-                time,
-                date
-        ));
+    public void addMessage(String id, String message, int channel, String time, String date, int pendingMessages, boolean isUniqueMessage) {
+        newMessage = true; // Boolean to prevent tvDate animation appear
+        alMessage.add(adapter.getItemCount(), new MessageItem(
+                    id,
+                    message,
+                    channel,
+                    time,
+                    date,
+                    pendingMessages
+            ));
         adapter.notifyDataSetChanged();
 
         /* We update the number of messages on the button to navigate down the conversation */

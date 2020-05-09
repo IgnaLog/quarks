@@ -7,13 +7,15 @@ public class MessageItem {
     private int messageChannel;
     private String messageTime;
     private String date;
+    private int pendingMessages;
 
-    public MessageItem(String messageId, String message, int messageChannel, String messageTime, String date) {
+    public MessageItem(String messageId, String message, int messageChannel, String messageTime, String date, int pendingMessages) {
         this.messageId = messageId;
         this.message = message;
         this.messageChannel = messageChannel;
         this.messageTime = messageTime;
         this.date = date;
+        this.pendingMessages = pendingMessages;
     }
 
     public String getMessageId() {
@@ -55,4 +57,13 @@ public class MessageItem {
     public void setDate(String date) {
         this.date = date;
     }
+
+    public int getPendingMessages() {
+        return pendingMessages;
+    }
+
+    public void setPendingMessages(int pendingMessages) {
+        this.pendingMessages = pendingMessages;
+    }
+
 }

@@ -43,6 +43,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
     @Override
     public void onBindViewHolder(@NonNull MessagesViewHolder holder, int position) {
 
+        /** DESIGN */
+
         RelativeLayout.LayoutParams ryCardView = (RelativeLayout.LayoutParams) holder.cardView.getLayoutParams();
         FrameLayout.LayoutParams fyLayoutMessage = (FrameLayout.LayoutParams) holder.layoutMessage.getLayoutParams();
         LinearLayout.LayoutParams lyTextViewTime = (LinearLayout.LayoutParams) holder.tvTime.getLayoutParams();
@@ -67,12 +69,30 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
             lyTextViewMessage.gravity = Gravity.LEFT;
             holder.tvMessage.setGravity(Gravity.LEFT);
         }
-
         holder.cardView.setLayoutParams(ryCardView);
         holder.layoutMessage.setLayoutParams(fyLayoutMessage);
         holder.tvTime.setLayoutParams(lyTextViewTime);
         holder.tvMessage.setLayoutParams(lyTextViewMessage);
 
+        /** SETTERS */
+
+        /* New messages */
+        if(listMessage.get(position).getPendingMessages() > 0){
+            holder.lyNewMessages.setVisibility(View.VISIBLE);
+            if(listMessage.get(position).getPendingMessages() == 1){
+                String strNewMessages = "1 "+ context.getResources().getString(R.string.unread_message);
+                holder.tvNewMessages.setText(strNewMessages);
+                listMessage.get(position).setPendingMessages(0); // Reset pendingMessages to 0 from this position
+            }else{
+                String strNewMessages = listMessage.get(position).getPendingMessages() + " " + context.getResources().getString(R.string.unread_messages);
+                holder.tvNewMessages.setText(strNewMessages);
+                listMessage.get(position).setPendingMessages(0); // Reset pendingMessages to 0 from this position
+            }
+        }else{
+            holder.lyNewMessages.setVisibility(View.GONE);
+        }
+
+        /* tvDate */
         holder.tvDate.setText(listMessage.get(position).getDate());
         if (position > 0) {
             if (listMessage.get(position).getDate().equalsIgnoreCase(listMessage.get(position - 1).getDate())) {
@@ -88,6 +108,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
             }
 
         }
+
+        /* Rest of views */
         holder.tvMessage.setText(listMessage.get(position).getMessage());
         holder.tvTime.setText(listMessage.get(position).getMessageTime());
 
@@ -105,10 +127,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
     static class MessagesViewHolder extends RecyclerView.ViewHolder {
 
         CardView cardView;
-        TextView tvMessage;
-        TextView tvTime;
-        TextView tvDate;
-        LinearLayout layoutMessage;
+        TextView tvMessage, tvTime, tvDate, tvNewMessages;
+        LinearLayout layoutMessage, lyNewMessages;
 
         MessagesViewHolder(View itemView) {
             super(itemView);
@@ -117,6 +137,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
             tvTime = itemView.findViewById(R.id.tvTime);
             tvDate = itemView.findViewById(R.id.tvDate);
             layoutMessage = itemView.findViewById(R.id.lyMessage);
+            lyNewMessages = itemView.findViewById(R.id.lyNewMessages);
+            tvNewMessages = itemView.findViewById(R.id.tvNewMessages);
         }
     }
 }

@@ -4,13 +4,43 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
+    <LinearLayout
+        android:id="@+id/lyNewMessages"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="5dp"
+        android:elevation="8dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tvNewMessages"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:layout_gravity="center"
+            android:padding="4dp"
+            android:paddingStart="15dp"
+            android:paddingEnd="15dp"
+            android:layout_marginBottom="5dp"
+            android:background="@drawable/bg_pending_messages"
+            android:text="@string/unread_messages"
+            android:textSize="11sp"
+            android:textColor="@color/bg_grey"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
     <TextView
         android:id="@+id/tvDate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_below="@id/lyNewMessages"
         android:layout_centerHorizontal="true"
-        android:layout_margin="10dp"
-        android:background="@drawable/tv_bg_date_chat"
+        android:layout_margin="5dp"
+        android:background="@drawable/bg_tv_date_chat"
         android:paddingStart="8dp"
         android:paddingTop="6dp"
         android:paddingEnd="8dp"
@@ -25,7 +55,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/tvDate"
-        android:layout_margin="5sp"
+        android:layout_margin="5dp"
         cardView:cardCornerRadius="7sp">
 
         <LinearLayout
