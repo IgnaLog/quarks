@@ -231,6 +231,7 @@ public class NoUsernameActivity extends AppCompatActivity {
         params.put("username", username);
         params.put("email", email);
         params.put("password", pass);
+        params.put("fcmToken", Preferences.getFCMToken(context));
 
         JSONArray jsonArrayParams = new JSONArray();
         jsonArrayParams.put(new JSONObject(params));

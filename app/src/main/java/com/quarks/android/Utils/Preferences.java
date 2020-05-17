@@ -62,4 +62,18 @@ public class Preferences {
         SharedPreferences preferecias = context.getSharedPreferences(NOMBRE_PREFERENCIAS, Context.MODE_PRIVATE);
         return  preferecias.getString("userPass", "");
     }
+
+    /* FCM TOKEN */
+    //----------------------------------------------------------------------------------------------
+
+    public static void setFCMToken(Context context, String token) {
+        SharedPreferences.Editor editor = context.getSharedPreferences(NOMBRE_PREFERENCIAS, Context.MODE_PRIVATE).edit();
+        editor.putString("token", token);
+        editor.apply();
+    }
+
+    public static String getFCMToken(Context context) {
+        SharedPreferences preferecias = context.getSharedPreferences(NOMBRE_PREFERENCIAS, Context.MODE_PRIVATE);
+        return  preferecias.getString("userPass", "");
+    }
 }

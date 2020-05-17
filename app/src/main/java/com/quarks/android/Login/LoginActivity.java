@@ -56,6 +56,7 @@ public class LoginActivity extends AppCompatActivity {
     private LinearLayout lyRetry, lySendEmail;
 
     private JsonArrayRequest jsonArrayRequest;
+    private Map<String, String> params = new HashMap<String, String>();
     private QueueVolley queueVolley;
 
     private Context context = LoginActivity.this;
@@ -245,10 +246,15 @@ public class LoginActivity extends AppCompatActivity {
      **/
 
     private JsonArrayRequest jarLogin() {
+        params.clear();
+        params.put("fcmToken", Preferences.getFCMToken(context));
+
+        JSONArray jsonArrayParams = new JSONArray();
+        jsonArrayParams.put(new JSONObject(params));
 
         String url = getResources().getString(R.string.url_login);
 
-        JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(Request.Method.POST, url, null,
+        JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(Request.Method.POST, url, jsonArrayParams,
                 new Response.Listener<JSONArray>() {
                     @Override
                     public void onResponse(JSONArray respuesta) {
