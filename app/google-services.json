@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "544373350356",
+    "firebase_url": "https://quarks-e2198.firebaseio.com",
+    "project_id": "quarks-e2198",
+    "storage_bucket": "quarks-e2198.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:544373350356:android:547412b4c4869da9740041",
+        "android_client_info": {
+          "package_name": "com.quarks.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "544373350356-g3baugue128odmro5p2m2iqrv10c5la5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCUTwPVqM0a5lOcWD3wbYW3jaEwhFix4s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "544373350356-g3baugue128odmro5p2m2iqrv10c5la5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
