@@ -121,7 +121,7 @@ public class WelcomeActivity extends AppCompatActivity {
         params.put("username", username);
         params.put("email", email);
         params.put("password", pass);
-        params.put("fcmToken", Preferences.getFCMToken(context));
+        params.put("fcmToken", Preferences.getFcmToken(context));
 
         JSONArray jsonArrayParams = new JSONArray();
         jsonArrayParams.put(new JSONObject(params));

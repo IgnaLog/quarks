@@ -247,7 +247,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private JsonArrayRequest jarLogin() {
         params.clear();
-        params.put("fcmToken", Preferences.getFCMToken(context));
+        params.put("fcmToken", Preferences.getFcmToken(context));
 
         JSONArray jsonArrayParams = new JSONArray();
         jsonArrayParams.put(new JSONObject(params));

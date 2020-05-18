@@ -8,6 +8,7 @@ import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -28,6 +29,7 @@ public class SplashActivity extends AppCompatActivity {
 
     private JsonArrayRequest jsonArrayRequest;
     private QueueVolley queueVolley;
+    private Map<String, String> params = new HashMap<String, String>();
     private Context context = SplashActivity.this;
 
     @Override
@@ -40,6 +42,7 @@ public class SplashActivity extends AppCompatActivity {
         /* We launched Volley to login */
         queueVolley = QueueVolley.getInstance(context);
         jsonArrayRequest = jarLogin();
+        jsonArrayRequest.setRetryPolicy((new DefaultRetryPolicy(DefaultRetryPolicy.DEFAULT_TIMEOUT_MS, 1, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT)));
         queueVolley.RequestQueueAdd(jsonArrayRequest);
     }
 
@@ -48,10 +51,15 @@ public class SplashActivity extends AppCompatActivity {
      **/
 
     private JsonArrayRequest jarLogin() {
+        params.clear();
+        params.put("fcmToken", Preferences.getFcmToken(context));
+
+        JSONArray jsonArrayParams = new JSONArray();
+        jsonArrayParams.put(new JSONObject(params));
 
         String url = getResources().getString(R.string.url_login);
 
-        JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(Request.Method.POST, url, null,
+        JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(Request.Method.POST, url, jsonArrayParams,
                 new Response.Listener<JSONArray>() {
                     @Override
                     public void onResponse(JSONArray respuesta) {

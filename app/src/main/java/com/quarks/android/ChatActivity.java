@@ -491,6 +491,9 @@ public class ChatActivity extends AppCompatActivity {
             } else { // We do not exceed the limit set by the developer. Therefore, we load the data normally
                 while (c.moveToNext()) {
                     loadItems(c);
+                    if(c.isLast()){
+                        adapter.isLastItem();
+                    }
                 }
             }
             adapter.notifyDataSetChanged();
