@@ -1,11 +1,13 @@
 package com.quarks.android;
 
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
+import android.service.notification.StatusBarNotification;
 import android.view.View;
 import android.widget.AbsListView;
 import android.widget.TextView;
@@ -21,6 +23,7 @@ import com.quarks.android.CustomViews.LoadingWheel;
 import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.Items.MessageItem;
 import com.quarks.android.Utils.DataBaseHelper;
+import com.quarks.android.Utils.FCM;
 
 import java.util.ArrayList;
 
@@ -121,6 +124,19 @@ public class MainActivity extends AppCompatActivity {
         }
         cursor = dataBaseHelper.getAllConversations();
         fetchData(true, cursor); // Load conversations again
+
+        // We clean the notifications after 1'5 seconds. It's important to clean the map mapNotificationIds so that new notifications show well
+//        new Handler().postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+//                if (notificationManager != null) {
+//                    notificationManager.cancelAll();
+//
+//                   // FCM.mapNotificationIds.clear();
+//                }
+//            }
+//        },0);
     }
 
     @Override

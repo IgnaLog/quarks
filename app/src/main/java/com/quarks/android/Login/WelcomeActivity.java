@@ -131,12 +131,12 @@ public class WelcomeActivity extends AppCompatActivity {
         JsonArrayRequest jsonArrayRequest = new JsonArrayRequest(Request.Method.POST, url, jsonArrayParams,
                 new Response.Listener<JSONArray>() {
                     @Override
-                    public void onResponse(JSONArray respuesta) {
+                    public void onResponse(JSONArray response) {
                         try {
                             int code = 0;
                             String id = "";
-                            for (int i = 0; i < respuesta.length(); i++) {
-                                JSONObject jsonObject = respuesta.getJSONObject(i);
+                            for (int i = 0; i < response.length(); i++) {
+                                JSONObject jsonObject = response.getJSONObject(i);
                                 code = jsonObject.getInt("code");
                                 id = jsonObject.getString("id");
                             }

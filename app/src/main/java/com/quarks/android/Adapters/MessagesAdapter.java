@@ -82,11 +82,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
             if(listMessage.get(position).getPendingMessages() == 1){
                 String strNewMessages = "1 "+ context.getResources().getString(R.string.unread_message);
                 holder.tvNewMessages.setText(strNewMessages);
-                listMessage.get(position).setPendingMessages(0); // Reset pendingMessages to 0 from this position
             }else{
                 String strNewMessages = listMessage.get(position).getPendingMessages() + " " + context.getResources().getString(R.string.unread_messages);
                 holder.tvNewMessages.setText(strNewMessages);
-                listMessage.get(position).setPendingMessages(0); // Reset pendingMessages to 0 from this position
             }
         }else{
             holder.lyNewMessages.setVisibility(View.GONE);
@@ -106,13 +104,11 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
             } else {
                 holder.tvDate.setVisibility(View.GONE);
             }
-
         }
 
         /* Rest of views */
         holder.tvMessage.setText(listMessage.get(position).getMessage());
         holder.tvTime.setText(listMessage.get(position).getMessageTime());
-
     }
 
     public void isLastItem() {

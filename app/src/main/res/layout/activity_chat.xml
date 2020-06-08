@@ -5,8 +5,7 @@
     android:id="@+id/rootView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_gris"
-    >
+    android:background="@color/bg_gris">
 
     <TextView
         android:id="@+id/tvDate"
@@ -33,16 +32,16 @@
 
         <LinearLayout
             android:id="@+id/lyProfileBack"
-            android:clickable="true"
-            android:focusable="true"
-            android:background="@drawable/ripple_avatar_photo_effect"
-            android:layout_marginStart="4dp"
-            android:padding="2dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/ripple_avatar_photo_effect"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="horizontal"
 
-            android:orientation="horizontal">
+            android:padding="2dp">
 
             <ImageView
                 android:layout_width="27dp"
@@ -63,13 +62,13 @@
             android:id="@+id/tvUsername"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tony"
-            android:textSize="18sp"
-            android:textColor="@color/bg_white"
-            android:textStyle="bold"
-            android:layout_marginStart="8dp"
             android:layout_centerVertical="true"
-            android:layout_toEndOf="@id/lyProfileBack"/>
+            android:layout_marginStart="8dp"
+            android:layout_toEndOf="@id/lyProfileBack"
+            android:text="Tony"
+            android:textColor="@color/bg_white"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
     </RelativeLayout>
 

@@ -125,5 +125,9 @@
     <string name="unread_messages">MENSAJES NO LEÍDOS</string>
     <string name="unread_message">MENSAJE NO LEÍDO</string>
 
+    <!--  notifications_FCM  -->
+    <string name="notifi_messages">mensajes de</string>
+    <string name="notifi_chats">chats</string>
+
 
 </resources>

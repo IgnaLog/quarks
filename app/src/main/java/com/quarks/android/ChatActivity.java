@@ -5,15 +5,12 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.res.Configuration;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewTreeObserver;
-import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
@@ -33,6 +30,7 @@ import com.quarks.android.Adapters.MessagesAdapter;
 import com.quarks.android.CustomViews.LoadingWheel;
 import com.quarks.android.Items.MessageItem;
 import com.quarks.android.Utils.DataBaseHelper;
+import com.quarks.android.Utils.FCM;
 import com.quarks.android.Utils.Functions;
 import com.quarks.android.Utils.Preferences;
 
@@ -49,7 +47,6 @@ import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
 
-import static com.quarks.android.Utils.Functions.dpToPx;
 import static com.quarks.android.Utils.Functions.formatDate;
 import static com.quarks.android.Utils.Functions.formatTime;
 
@@ -93,6 +90,9 @@ public class ChatActivity extends AppCompatActivity {
     private int oldLastVisibleItem = -1;
     private int badgeMessages = 0;
     private boolean newMessage = false; // Boolean to prevent tvDate animation appear
+
+    private int positionPendingMessages = -1;
+    private MessageItem itemWithPendingMessages;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -283,6 +283,13 @@ public class ChatActivity extends AppCompatActivity {
             public void onClick(View v) {
                 if (!etMessage.getText().toString().equals("")) {
                     sendMessage(etMessage.getText().toString().trim(), 1); // We send the message
+
+                    if (positionPendingMessages != -1) {
+                        itemWithPendingMessages.setPendingMessages(0);
+                        alMessage.set(positionPendingMessages, itemWithPendingMessages);
+                        adapter.notifyItemChanged(positionPendingMessages);
+                        positionPendingMessages = -1;
+                    }
                 }
             }
         });
@@ -332,7 +339,7 @@ public class ChatActivity extends AppCompatActivity {
                     JSONArray messages = (JSONArray) args[0];
                     try {
                         if (messages != null) {
-                           int pendingMessages = 0;
+                            int pendingMessages = 0;
                             for (int i = 0; i < messages.length(); i++) {
                                 JSONObject jsonObject = messages.getJSONObject(i);
                                 String message = jsonObject.getString("message");
@@ -340,17 +347,26 @@ public class ChatActivity extends AppCompatActivity {
                                 String time = formatMongoTime(mongoTime);
                                 int channel = 2;
                                 // For the first message, we mark the new messages with the number of messages to read
-                                if(i == 0) {
+                                if (i == 0) {
                                     pendingMessages = messages.length();
-                                } else{
+
+                                } else {
                                     pendingMessages = 0;
                                 }
-
+                                if (!dataBaseHelper.thereIsConversation(receiverId)) {
+                                    adapter.isLastItem();
+                                }
                                 values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, time); // We store the message into the local data base and we obtain the id and time from the record stored
                                 String id = values.get("id");
-                                String dateTime = values.get("time"); // Proviene de la base de datos local al guardar el registro
-                                addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages,false); // Add message from the receiver to the activity
+                                String dateTime = values.get("time"); // Comes from local database when saving the message
+                                addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages); // Add message from the receiver to the activity
+                                if (i == 0) {
+                                    positionPendingMessages = alMessage.size() - 1;
+                                    itemWithPendingMessages = new MessageItem(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages);
+                                }
                             }
+                            // We move the RecyclerView to the message of pending messages
+                            linearLayoutManager.scrollToPositionWithOffset(adapter.getItemCount() - messages.length(), 280);
                         }
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -377,14 +393,39 @@ public class ChatActivity extends AppCompatActivity {
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
+                    if (!dataBaseHelper.thereIsConversation(receiverId)) {
+                        adapter.isLastItem();
+                    }
                     values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, ""); // We store the message into the local data base and we obtain the id and time from the record stored
                     String id = values.get("id");
                     String dateTime = values.get("time"); // Proviene de la base de datos local al guardar el registro
-                    addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context),0,true); // Add message from the receiver to the activity
+                    addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), 0); // Add message from the receiver to the activity
+
+                    if (positionPendingMessages != -1) {
+                        int count = itemWithPendingMessages.getPendingMessages();
+                        itemWithPendingMessages.setPendingMessages(count + 1);
+                        alMessage.set(positionPendingMessages, itemWithPendingMessages);
+                        adapter.notifyItemChanged(positionPendingMessages);
+                    }
                 }
             });
         }
     };
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Desconect the sockets so that the server send a notification for new messages
+        socket.emit("disconnect", "");
+        socket.disconnect();
+        // We remove the textView in the item that contains the number of unread messages
+        if (positionPendingMessages != -1) {
+            itemWithPendingMessages.setPendingMessages(0);
+            alMessage.set(positionPendingMessages, itemWithPendingMessages);
+            adapter.notifyItemChanged(positionPendingMessages);
+            positionPendingMessages = -1;
+        }
+    }
 
     /**
      * OVERRIDE
@@ -440,7 +481,10 @@ public class ChatActivity extends AppCompatActivity {
         receiverId = getIntent().getStringExtra("receiverId");
         receiverUsername = getIntent().getStringExtra("receiverUsername"); // We capture the username and id of the previous activity
 
+
         tvUsername.setText(receiverUsername);
+        FCM.mapNotificationIds.remove(receiverUsername);
+        FCM.mapMessages.remove(receiverUsername);
     }
 
     /* Returns if the keyboard has appeared or been hidden since the last time */
@@ -491,7 +535,7 @@ public class ChatActivity extends AppCompatActivity {
             } else { // We do not exceed the limit set by the developer. Therefore, we load the data normally
                 while (c.moveToNext()) {
                     loadItems(c);
-                    if(c.isLast()){
+                    if (c.isLast()) {
                         adapter.isLastItem();
                     }
                 }
@@ -552,10 +596,13 @@ public class ChatActivity extends AppCompatActivity {
     /* Save a message in the local database, update the adapter and send the message to the addressee */
     public void sendMessage(String message, int channel) {
         etMessage.setText("");
+        if (!dataBaseHelper.thereIsConversation(receiverId)) {
+            adapter.isLastItem();
+        }
         values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, ""); // We store the message into the local data base and we obtain the id and time from the record stored
         String id = values.get("id");
         String dateTime = values.get("time");
-        addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context),0, true); // Add message from the sender to the activity
+        addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), 0); // Add message from the sender to the activity
         JSONObject jsonObjectData = new JSONObject(); // We prepare a jsonObject to send the message to the server
         try {
             jsonObjectData.put("userId", receiverId); // Who is going to receive the message (receiver)
@@ -570,16 +617,16 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     /* Returns if the keyboard has appeared or been hidden since the last time */
-    public void addMessage(String id, String message, int channel, String time, String date, int pendingMessages, boolean isUniqueMessage) {
+    public void addMessage(String id, String message, int channel, String time, String date, int pendingMessages) {
         newMessage = true; // Boolean to prevent tvDate animation appear
         alMessage.add(adapter.getItemCount(), new MessageItem(
-                    id,
-                    message,
-                    channel,
-                    time,
-                    date,
-                    pendingMessages
-            ));
+                id,
+                message,
+                channel,
+                time,
+                date,
+                pendingMessages
+        ));
         adapter.notifyDataSetChanged();
 
         /* We update the number of messages on the button to navigate down the conversation */
