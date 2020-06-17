@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -75,6 +76,7 @@ public class FCM extends FirebaseMessagingService {
     private void sendMessageNotification(Context context, String userId, String username, String message, Map<String, List<Message>> mapMessages) {
         notificationManager = NotificationManagerCompat.from(context); // Create notification manager
         createChannels();
+        NotificationCompat.Action replyAction = createReplyAction(context);
         mapUserIds.put(username, userId); // we save the userId with its respective username
         storeMessage(username, message); // We store the messages of their respective username in our map mapMessages
 
@@ -83,7 +85,7 @@ public class FCM extends FirebaseMessagingService {
             Here the priority will be high. */
         if (mapNotificationIds.size() <= 1) {
             NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(username);
-            launchSimpleNotification(context, CHANNEL_ID_HIGH, messagingStyle, PRIORITY_HIGH, userId, username);
+            launchSimpleNotification(context, CHANNEL_ID_HIGH, messagingStyle, replyAction, PRIORITY_HIGH, userId, username);
             launchSummaryNotification(context, CHANNEL_ID_HIGH, PRIORITY_HIGH, username);
         } else {  // For the following messages from other users we lower the priority of the individual notification and create a new channel for it, with a low priority
             count++;
@@ -95,7 +97,7 @@ public class FCM extends FirebaseMessagingService {
                     if (isNotificationActive(id)) {
                         NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
                         String serverUserId = mapUserIds.get(user);
-                        launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, PRIORITY_LOW, serverUserId, user);
+                        launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, replyAction, PRIORITY_LOW, serverUserId, user);
                         launchSummaryNotification(context, CHANNEL_ID_HIGH, PRIORITY_HIGH, user);
                     }
                 }
@@ -110,7 +112,7 @@ public class FCM extends FirebaseMessagingService {
                         if (uniqueNotificationActive == id || id == getNotificationId(username)) {
                             NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
                             String serverUserId = mapUserIds.get(user);
-                            launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, PRIORITY_LOW, serverUserId, user);
+                            launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, replyAction, PRIORITY_LOW, serverUserId, user);
                             launchSummaryNotification(context, CHANNEL_ID_HIGH, PRIORITY_HIGH, user);
                         }
                     }
@@ -121,7 +123,7 @@ public class FCM extends FirebaseMessagingService {
                         if (isNotificationActive(id) || id == getNotificationId(username)) {
                             NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
                             String serverUserId = mapUserIds.get(user);
-                            launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, PRIORITY_LOW, serverUserId, user);
+                            launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, replyAction, PRIORITY_LOW, serverUserId, user);
                             launchSummaryNotification(context, CHANNEL_ID_HIGH, PRIORITY_HIGH, user);
                         }
                     }
@@ -134,7 +136,7 @@ public class FCM extends FirebaseMessagingService {
                     String user = entry.getKey();
                     NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
                     String serverUserId = mapUserIds.get(user);
-                    launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, PRIORITY_LOW, serverUserId, user);
+                    launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, replyAction, PRIORITY_LOW, serverUserId, user);
                     launchSummaryNotification(context, CHANNEL_ID_HIGH, PRIORITY_HIGH, user);
                 }
             }
@@ -142,13 +144,13 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* We launch a simple notification with a messaging style */
-    private void launchSimpleNotification(Context context, String ChannelId, NotificationCompat.MessagingStyle messagingStyle, int priority, String userId, String username) {
+    private void launchSimpleNotification(Context context, String ChannelId, NotificationCompat.MessagingStyle messagingStyle, NotificationCompat.Action replyAction , int priority, String userId, String username) {
         Notification firstNotification = new NotificationCompat.Builder(context, ChannelId)
                 .setWhen(System.currentTimeMillis())
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setStyle(messagingStyle)
                 .setGroup(GROUP_KEY)
-                //   .addAction(replyAction)
+                .addAction(replyAction)
                 .setDefaults(Notification.DEFAULT_ALL)
                 .setPriority(priority)
                 .setContentIntent(pendingIntentChat(context, userId, username)) // Set the intent that will fire when the user taps the notification
@@ -190,6 +192,21 @@ public class FCM extends FirebaseMessagingService {
             messagingStyle.addMessage(notificationMessage);
         }
         return messagingStyle;
+    }
+
+    /*  we add a response mode */
+    private NotificationCompat.Action createReplyAction(Context context){
+        int requestID = (int) System.currentTimeMillis();
+        RemoteInput remoteInput = new RemoteInput.Builder("key_text_reply").setLabel(context.getResources().getString(R.string.answer)).build();
+        Intent replyIntent;
+        PendingIntent replyPendingIntent;
+
+        replyIntent = new Intent(context, DirectReplyReceiver.class);
+        replyPendingIntent = PendingIntent.getBroadcast(context, requestID, replyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        return new NotificationCompat.Action.Builder(R.drawable.ic_reply, context.getResources().getString(R.string.reply), replyPendingIntent)
+                .addRemoteInput(remoteInput)
+                .build();
     }
 
     /* For each user we keep a List of all the messages that that are entering inside a key value map. If a new user arrives, we create a new key-value */
@@ -338,19 +355,3 @@ public class FCM extends FirebaseMessagingService {
         return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 }
-
-// For each new user notification, we add a response mode
-//        RemoteInput remoteInput = new RemoteInput.Builder("key_text_reply").setLabel("Your answer...").build();
-//        Intent replyIntent;
-//        PendingIntent replyPendingIntent = null;
-//
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-//            replyIntent = new Intent(context, DirectReplyReceiver.class);
-//            replyPendingIntent = PendingIntent.getBroadcast(context, 0, replyIntent, 0);
-//        } else {
-//            // start chat activity instead (PendingIntent.getActivity)
-//            // cancel notification with notificationManagerCompat.cancel(id)
-//        }
-//        NotificationCompat.Action replyAction = new NotificationCompat.Action.Builder(R.drawable.ic_reply, "Reply", replyPendingIntent)
-//                .addRemoteInput(remoteInput)
-//                .build();

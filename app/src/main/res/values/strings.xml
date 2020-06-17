@@ -120,6 +120,7 @@
     <string name="write_message">Escribe un mensaje</string>
     <string name="yesterday">ayer</string>
     <string name="today">hoy</string>
+    <string name="typing">Escribiendo…</string>
 
     <!--  card_view_message  -->
     <string name="unread_messages">MENSAJES NO LEÍDOS</string>
@@ -128,6 +129,8 @@
     <!--  notifications_FCM  -->
     <string name="notifi_messages">mensajes de</string>
     <string name="notifi_chats">chats</string>
+    <string name="reply">Responder</string>
+    <string name="answer">Respuesta</string>
 
 
 </resources>
