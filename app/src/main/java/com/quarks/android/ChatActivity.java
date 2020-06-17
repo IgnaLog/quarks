@@ -9,6 +9,8 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
@@ -61,7 +63,7 @@ public class ChatActivity extends AppCompatActivity {
     private MessagesAdapter adapter;
     private ArrayList<MessageItem> alMessage = new ArrayList<MessageItem>();
     private EditText etMessage;
-    private TextView tvDate, tvBadge, tvUsername;
+    private TextView tvDate, tvBadge, tvUsername, tvTyping;
     private Socket socket;
     private Button btnSend;
     private Context context = ChatActivity.this;
@@ -94,6 +96,10 @@ public class ChatActivity extends AppCompatActivity {
     private int positionPendingMessages = -1;
     private MessageItem itemWithPendingMessages;
 
+    private boolean typing = false;
+    private Handler typingHandler = new Handler();
+    private static final int TYPING_TIMER_LENGTH = 1500;
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,8 +129,40 @@ public class ChatActivity extends AppCompatActivity {
         socket.on("connected", connected);
         socket.on("pending-messages", getPendingMessages);
         socket.on("send-message", listeningMessages);
+        socket.on("typing", onTyping);
+        socket.on("stop-typing", onStopTyping);
 
         /**  LISTENERS  **/
+
+        etMessage.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                /* Emit typing message */
+                if (null == receiverUsername) return;
+                if (!socket.connected()) return;
+
+                if (!typing) {
+                    typing = true;
+                    JSONObject jsonObjectData = new JSONObject();
+                    try {
+                        jsonObjectData.put("receiverId", receiverId);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    socket.emit("typing", jsonObjectData);
+                }
+                typingHandler.removeCallbacks(onTypingTimeout);
+                typingHandler.postDelayed(onTypingTimeout, TYPING_TIMER_LENGTH);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
 
         rvChat.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -412,6 +450,47 @@ public class ChatActivity extends AppCompatActivity {
         }
     };
 
+    private Emitter.Listener onTyping = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    tvTyping.setVisibility(View.VISIBLE);
+                }
+            });
+        }
+    };
+
+    private Emitter.Listener onStopTyping = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    tvTyping.setVisibility(View.GONE);
+                }
+            });
+        }
+    };
+
+    private Runnable onTypingTimeout = new Runnable() {
+        @Override
+        public void run() {
+            if (!typing) return;
+
+            JSONObject jsonObjectData = new JSONObject();
+            try {
+                jsonObjectData.put("receiverId", receiverId);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            typing = false;
+            socket.emit("stop-typing", jsonObjectData);
+        }
+    };
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -454,6 +533,7 @@ public class ChatActivity extends AppCompatActivity {
         tvBadge = findViewById(R.id.tvBadge);
         lyProfileBack = findViewById(R.id.lyProfileBack);
         tvUsername = findViewById(R.id.tvUsername);
+        tvTyping = findViewById(R.id.tvTyping);
 
         animDateAppear = ObjectAnimator.ofFloat(tvDate, "translationY", 0f, 110f);
         animDateAppear.setInterpolator(new DecelerateInterpolator());
