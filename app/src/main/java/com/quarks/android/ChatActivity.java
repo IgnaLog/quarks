@@ -116,8 +116,6 @@ public class ChatActivity extends AppCompatActivity {
         cursor = dataBaseHelper.getAllMessages(receiverId);
         fetchData(true, cursor);
 
-        /* We retrieve pending messages from this user and enter them */
-
         /**  SOCKETS CONNECTIONS  **/
 
         try {
@@ -134,6 +132,7 @@ public class ChatActivity extends AppCompatActivity {
 
         /**  LISTENERS  **/
 
+        /* To cast when typing */
         etMessage.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -155,6 +154,7 @@ public class ChatActivity extends AppCompatActivity {
                     }
                     socket.emit("typing", jsonObjectData);
                 }
+                // We allow time before considering that writing has stopped
                 typingHandler.removeCallbacks(onTypingTimeout);
                 typingHandler.postDelayed(onTypingTimeout, TYPING_TIMER_LENGTH);
             }
@@ -164,6 +164,7 @@ public class ChatActivity extends AppCompatActivity {
             }
         });
 
+        /* Here we manage the control of new items to load, the animation with the date of the messages and the badge with which you scroll at the end of the conversation */
         rvChat.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
@@ -306,6 +307,7 @@ public class ChatActivity extends AppCompatActivity {
             }
         });
 
+        /* This listener controls the button that takes you to the end of the conversation */
         flBtnDownRecycler.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -316,12 +318,15 @@ public class ChatActivity extends AppCompatActivity {
             }
         });
 
+        /* Here a new message is sent and the textView with the number of unread messages is deleted */
         btnSend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                /* We send the message */
                 if (!etMessage.getText().toString().equals("")) {
-                    sendMessage(etMessage.getText().toString().trim(), 1); // We send the message
+                    sendMessage(etMessage.getText().toString().trim(), 1);
 
+                    /* This block of code is responsible for removing the textView with the number of unread messages */
                     if (positionPendingMessages != -1) {
                         itemWithPendingMessages.setPendingMessages(0);
                         alMessage.set(positionPendingMessages, itemWithPendingMessages);
@@ -332,6 +337,7 @@ public class ChatActivity extends AppCompatActivity {
             }
         });
 
+        /* We close the activity */
         lyProfileBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -384,20 +390,27 @@ public class ChatActivity extends AppCompatActivity {
                                 String mongoTime = jsonObject.getString("time");
                                 String time = formatMongoTime(mongoTime);
                                 int channel = 2;
-                                // For the first message, we mark the new messages with the number of messages to read
+
+                                /* We collect the number of messages to pass it to the item. For the first message, we mark the new messages with the number of messages to read */
                                 if (i == 0) {
                                     pendingMessages = messages.length();
-
                                 } else {
                                     pendingMessages = 0;
                                 }
+
+                                /* If it is the beginning of the conversation, we mark that it's the last item, so that the adapter shows the date of the first message */
                                 if (!dataBaseHelper.thereIsConversation(receiverId)) {
                                     adapter.isLastItem();
                                 }
+
+                                /* We save the message in the local database and collect the date and the message id to compose a new item */
                                 values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, time); // We store the message into the local data base and we obtain the id and time from the record stored
                                 String id = values.get("id");
                                 String dateTime = values.get("time"); // Comes from local database when saving the message
-                                addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages); // Add message from the receiver to the activity
+                                addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages); // We add a new item to the adapter
+
+                                /* This is to show the textView with the number of unread messages.
+                                If it is the first message, we capture the current position of alMessage and create a new item with the appropriate data */
                                 if (i == 0) {
                                     positionPendingMessages = alMessage.size() - 1;
                                     itemWithPendingMessages = new MessageItem(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages);
@@ -414,7 +427,7 @@ public class ChatActivity extends AppCompatActivity {
         }
     };
 
-    /* We receive messages */
+    /* We receive live messages */
     private Emitter.Listener listeningMessages = new Emitter.Listener() {
         @Override
         public void call(final Object... args) {
@@ -425,20 +438,27 @@ public class ChatActivity extends AppCompatActivity {
                     String username = "";
                     String message = "";
                     int channel = 2;
+
                     try {
                         username = data.getString("username");
                         message = data.getString("content");
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
+
+                    /* If it is the beginning of the conversation, we mark that it's the last item, so that the adapter shows the date of the first message */
                     if (!dataBaseHelper.thereIsConversation(receiverId)) {
                         adapter.isLastItem();
                     }
+
+                    /* We save the message in the local database and collect the date and the message id to compose a new item */
                     values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, ""); // We store the message into the local data base and we obtain the id and time from the record stored
                     String id = values.get("id");
-                    String dateTime = values.get("time"); // Proviene de la base de datos local al guardar el registro
-                    addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), 0); // Add message from the receiver to the activity
+                    String dateTime = values.get("time"); // Comes from local database when saving the message
+                    addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), 0); // We add a new item to the adapter
 
+                    /* This code block is responsible for adding one more message to the textView with the number of unread messages.
+                    To do this, if the variable positionPendingMessages contains the position in which the textView of unread messages is displayed, we increase the number the value of unread messages */
                     if (positionPendingMessages != -1) {
                         int count = itemWithPendingMessages.getPendingMessages();
                         itemWithPendingMessages.setPendingMessages(count + 1);
@@ -450,6 +470,7 @@ public class ChatActivity extends AppCompatActivity {
         }
     };
 
+    /* The receiver is typing */
     private Emitter.Listener onTyping = new Emitter.Listener() {
         @Override
         public void call(final Object... args) {
@@ -462,6 +483,7 @@ public class ChatActivity extends AppCompatActivity {
         }
     };
 
+    /* The receiver has stopped typing */
     private Emitter.Listener onStopTyping = new Emitter.Listener() {
         @Override
         public void call(final Object... args) {
@@ -474,6 +496,7 @@ public class ChatActivity extends AppCompatActivity {
         }
     };
 
+    /* After a while without writing we launch stop-typing event */
     private Runnable onTypingTimeout = new Runnable() {
         @Override
         public void run() {
@@ -491,6 +514,19 @@ public class ChatActivity extends AppCompatActivity {
         }
     };
 
+
+    /**
+     * OVERRIDE
+     **/
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if(!socket.connected()){
+
+        }
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -505,10 +541,6 @@ public class ChatActivity extends AppCompatActivity {
             positionPendingMessages = -1;
         }
     }
-
-    /**
-     * OVERRIDE
-     **/
 
     @Override
     protected void onDestroy() {
