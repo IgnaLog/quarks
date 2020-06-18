@@ -2,6 +2,7 @@ package com.quarks.android.Utils;
 
 import android.animation.LayoutTransition;
 import android.app.Activity;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -15,6 +16,7 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.service.notification.StatusBarNotification;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Display;
@@ -44,8 +46,26 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import static android.content.Context.NOTIFICATION_SERVICE;
+
 
 public class Functions {
+
+    /* Given a notification id, it tells you if it's active */
+    public static boolean isNotificationActive(int notificationId, Context context) {
+        boolean is = false;
+        NotificationManager mNotificationManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
+        StatusBarNotification[] notifications = new StatusBarNotification[0];
+        if (mNotificationManager != null) {
+            notifications = mNotificationManager.getActiveNotifications();
+        }
+        for (StatusBarNotification notification : notifications) {
+            if (notification.getId() == notificationId) {
+                is = true;
+            }
+        }
+        return is;
+    }
 
     /* Get the day before in string format */
     private static String getYesterdayDateString() {

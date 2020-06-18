@@ -25,6 +25,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -522,15 +524,38 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if(!socket.connected()){
+        tvTyping.setVisibility(View.GONE);
 
+        if(!socket.connected()){
+            try {
+                socket = IO.socket(getResources().getString(R.string.url_chat));
+            } catch (URISyntaxException e) {
+                Log.d("Error", "Error socketURL: " + e.toString());
+            }
+            socket.connect();
+            socket.on("connected", connected);
+            socket.on("pending-messages", getPendingMessages);
+            socket.on("send-message", listeningMessages);
+            socket.on("typing", onTyping);
+            socket.on("stop-typing", onStopTyping);
+        }
+
+        int id = FCM.getNotificationId(receiverUsername);
+        if(Functions.isNotificationActive(id, context)){
+            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context); // Create notification manager
+            if(FCM.staticNumNotificationsActive(context) == 1){ // If there is only one user notification, we also cancel the summary notification
+                notificationManager.cancel(FCM.SUMMARY_NOTIFICATION_ID);
+            }
+            notificationManager.cancel(id);
+            FCM.mapNotificationIds.remove(receiverUsername);
+            FCM.mapMessages.remove(receiverUsername);
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        // Desconect the sockets so that the server send a notification for new messages
+        // Disconnect the sockets so that the server send a notification for new messages
         socket.emit("disconnect", "");
         socket.disconnect();
         // We remove the textView in the item that contains the number of unread messages
@@ -592,7 +617,6 @@ public class ChatActivity extends AppCompatActivity {
         username = Preferences.getUserName(context);
         receiverId = getIntent().getStringExtra("receiverId");
         receiverUsername = getIntent().getStringExtra("receiverUsername"); // We capture the username and id of the previous activity
-
 
         tvUsername.setText(receiverUsername);
         FCM.mapNotificationIds.remove(receiverUsername);

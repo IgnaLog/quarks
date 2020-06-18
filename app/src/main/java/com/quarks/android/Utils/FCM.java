@@ -33,7 +33,7 @@ public class FCM extends FirebaseMessagingService {
     private static String NAME_CHANNEL_LOW = "lowPriorityNotification";
     private static String NAME_CHANNEL_HIGH = "highPriorityNotification";
     private static String GROUP_KEY = "com.quarks.android";
-    private static int SUMMARY_NOTIFICATION_ID = 0;
+    public static int SUMMARY_NOTIFICATION_ID = 0;
     private static int PRIORITY_LOW = -1;
     private static int PRIORITY_HIGH = 1;
     private static int PRIORITY_MIN = -2;
@@ -73,7 +73,7 @@ public class FCM extends FirebaseMessagingService {
         }
     }
 
-    private void sendMessageNotification(Context context, String userId, String username, String message, Map<String, List<Message>> mapMessages) {
+    public void sendMessageNotification(Context context, String userId, String username, String message, Map<String, List<Message>> mapMessages) {
         notificationManager = NotificationManagerCompat.from(context); // Create notification manager
         createChannels();
         NotificationCompat.Action replyAction = createReplyAction(context);
@@ -232,13 +232,28 @@ public class FCM extends FirebaseMessagingService {
         }
     }
 
-    /* Returns the number of active notifications */
+    /* Returns the number of active notifications, not counting the summary notification */
     private int numNotificationsActive() {
         int count = 0;
         for (Map.Entry<String, Integer> entry : mapNotificationIds.entrySet()) {
             int id = entry.getValue();
             if (id != 0) {
                 boolean isActive = isNotificationActive(id);
+                if (isActive) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    /* Returns the number of active notifications, not counting the summary notification */
+    public static int staticNumNotificationsActive(Context context) {
+        int count = 0;
+        for (Map.Entry<String, Integer> entry : mapNotificationIds.entrySet()) {
+            int id = entry.getValue();
+            if (id != 0) {
+                boolean isActive = Functions.isNotificationActive(id, context);
                 if (isActive) {
                     count++;
                 }
@@ -262,7 +277,7 @@ public class FCM extends FirebaseMessagingService {
         return notification;
     }
 
-    /* Tells you if there are any not active notifications */
+    /* If there is any notification that is not active, not counting the group notification */
     private boolean anyNotificationNotActive() {
         boolean any = false;
         for (Map.Entry<String, Integer> entry : mapNotificationIds.entrySet()) {
@@ -329,7 +344,7 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* Using a map key value (username: id++), we obtain the corresponding id of each user */
-    private static int getNotificationId(String username) {
+    public static int getNotificationId(String username) {
         if (!mapNotificationIds.containsKey(username)) {
             mapNotificationIds.put(username, id++);
         }
