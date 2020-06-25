@@ -29,6 +29,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 import androidx.exifinterface.media.ExifInterface;
 
@@ -43,7 +45,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
 
 import static android.content.Context.NOTIFICATION_SERVICE;
@@ -51,21 +55,21 @@ import static android.content.Context.NOTIFICATION_SERVICE;
 
 public class Functions {
 
-    /* Given a notification id, it tells you if it's active */
-    public static boolean isNotificationActive(int notificationId, Context context) {
-        boolean is = false;
-        NotificationManager mNotificationManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
-        StatusBarNotification[] notifications = new StatusBarNotification[0];
-        if (mNotificationManager != null) {
-            notifications = mNotificationManager.getActiveNotifications();
-        }
-        for (StatusBarNotification notification : notifications) {
-            if (notification.getId() == notificationId) {
-                is = true;
-            }
-        }
-        return is;
-    }
+//    /* Given a notification id, it tells you if it's active */
+//    public static boolean isNotificationActive(int notificationId, Context context) {
+//        boolean is = false;
+//        NotificationManager mNotificationManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
+//        StatusBarNotification[] notifications = new StatusBarNotification[0];
+//        if (mNotificationManager != null) {
+//            notifications = mNotificationManager.getActiveNotifications();
+//        }
+//        for (StatusBarNotification notification : notifications) {
+//            if (notification.getId() == notificationId) {
+//                is = true;
+//            }
+//        }
+//        return is;
+//    }
 
     /* Get the day before in string format */
     private static String getYesterdayDateString() {

@@ -526,7 +526,7 @@ public class ChatActivity extends AppCompatActivity {
         super.onResume();
         tvTyping.setVisibility(View.GONE);
 
-        if(!socket.connected()){
+        if (!socket.connected()) {
             try {
                 socket = IO.socket(getResources().getString(R.string.url_chat));
             } catch (URISyntaxException e) {
@@ -541,14 +541,25 @@ public class ChatActivity extends AppCompatActivity {
         }
 
         int id = FCM.getNotificationId(receiverUsername);
-        if(Functions.isNotificationActive(id, context)){
+        if (FCM.isNotificationActive(id, context)) {
             NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context); // Create notification manager
-            if(FCM.staticNumNotificationsActive(context) == 1){ // If there is only one user notification, we also cancel the summary notification
+            if (FCM.numNotificationsActive(context) == 1) { // If there is only one user notification, we also cancel the summary notification
                 notificationManager.cancel(FCM.SUMMARY_NOTIFICATION_ID);
+                notificationManager.cancel(id);
+                FCM.mapNotificationIds.remove(receiverUsername);
+                FCM.mapMessages.remove(receiverUsername);
+            } else {
+                notificationManager.cancel(id);
+                FCM.mapNotificationIds.remove(receiverUsername);
+                FCM.mapMessages.remove(receiverUsername);
+                FCM.updateMessageNotification(context, FCM.mapMessages);
             }
-            notificationManager.cancel(id);
-            FCM.mapNotificationIds.remove(receiverUsername);
-            FCM.mapMessages.remove(receiverUsername);
+        } else {
+            if (FCM.numNotificationsActive(context) > 1) {
+                FCM.mapNotificationIds.remove(receiverUsername);
+                FCM.mapMessages.remove(receiverUsername);
+                FCM.updateMessageNotification(context, FCM.mapMessages);
+            }
         }
     }
 

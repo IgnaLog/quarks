@@ -46,7 +46,7 @@ public class FCM extends FirebaseMessagingService {
     public static Map<String, List<Message>> mapMessages = new HashMap<String, List<Message>>();
     public static Map<String, String> mapUserIds = new HashMap<String, String>();
 
-    private NotificationManagerCompat notificationManager;
+    private static NotificationManagerCompat notificationManager;
 
     @Override
     public void onNewToken(@NonNull String s) {
@@ -90,20 +90,20 @@ public class FCM extends FirebaseMessagingService {
         } else {  // For the following messages from other users we lower the priority of the individual notification and create a new channel for it, with a low priority
             count++;
             // If there are notifications that are not active and a second user has already sent more than one notification:
-            if (anyNotificationNotActive() && count > 1 && isNotificationActive(getNotificationId(username))) { // If the user who notifies a new message already has an active notification, we only notify active messages
+            if (anyNotificationNotActive(context) && count > 1 && isNotificationActive(getNotificationId(username), context)) { // If the user who notifies a new message already has an active notification, we only notify active messages
                 for (Map.Entry<String, List<Message>> entry : mapMessages.entrySet()) {
                     String user = entry.getKey();
                     int id = getNotificationId(user);
-                    if (isNotificationActive(id)) {
+                    if (isNotificationActive(id, context)) {
                         NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
                         String serverUserId = mapUserIds.get(user);
                         launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, replyAction, PRIORITY_LOW, serverUserId, user);
                         launchSummaryNotification(context, CHANNEL_ID_HIGH, PRIORITY_HIGH, user);
                     }
                 }
-            } else if (anyNotificationNotActive() && count > 1 && !isNotificationActive(getNotificationId(username))) { // If the user who notifies a new message doesn't previously have an active notification, his messages and all active notifications are notified
-                if (numNotificationsActive() == 1) { // If there is only one active notification, we cancel the group to create a new notification group
-                    int uniqueNotificationActive = getUniqueNotificationActive();
+            } else if (anyNotificationNotActive(context) && count > 1 && !isNotificationActive(getNotificationId(username), context)) { // If the user who notifies a new message doesn't previously have an active notification, his messages and all active notifications are notified
+                if (numNotificationsActive(context) == 1) { // If there is only one active notification, we cancel the group to create a new notification group
+                    int uniqueNotificationActive = getUniqueNotificationActive(context);
                     notificationManager.cancel(SUMMARY_NOTIFICATION_ID);
 
                     for (Map.Entry<String, List<Message>> entry : mapMessages.entrySet()) {
@@ -120,7 +120,7 @@ public class FCM extends FirebaseMessagingService {
                     for (Map.Entry<String, List<Message>> entry : mapMessages.entrySet()) {
                         String user = entry.getKey();
                         int id = getNotificationId(user);
-                        if (isNotificationActive(id) || id == getNotificationId(username)) {
+                        if (isNotificationActive(id, context) || id == getNotificationId(username)) {
                             NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
                             String serverUserId = mapUserIds.get(user);
                             launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, replyAction, PRIORITY_LOW, serverUserId, user);
@@ -143,8 +143,35 @@ public class FCM extends FirebaseMessagingService {
         }
     }
 
+    public static void updateMessageNotification(Context context, Map<String, List<Message>> mapMessages) {
+        notificationManager = NotificationManagerCompat.from(context); // Create notification manager
+        createChannels();
+        NotificationCompat.Action replyAction = createReplyAction(context);
+
+        if (anyNotificationNotActive(context)) {
+            for (Map.Entry<String, List<Message>> entry : mapMessages.entrySet()) {
+                String user = entry.getKey();
+                int id = getNotificationId(user);
+                if (isNotificationActive(id, context)) {
+                    NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
+                    String serverUserId = mapUserIds.get(user);
+                    launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, replyAction, PRIORITY_LOW, serverUserId, user);
+                    launchSummaryNotification(context, CHANNEL_ID_LOW, PRIORITY_LOW, user);
+                }
+            }
+        } else { // If all notifications are active, we load all messages
+            for (Map.Entry<String, List<Message>> entry : mapMessages.entrySet()) {
+                String user = entry.getKey();
+                NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
+                String serverUserId = mapUserIds.get(user);
+                launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, replyAction, PRIORITY_LOW, serverUserId, user);
+                launchSummaryNotification(context, CHANNEL_ID_LOW, PRIORITY_LOW, user);
+            }
+        }
+    }
+
     /* We launch a simple notification with a messaging style */
-    private void launchSimpleNotification(Context context, String ChannelId, NotificationCompat.MessagingStyle messagingStyle, NotificationCompat.Action replyAction , int priority, String userId, String username) {
+    private static void launchSimpleNotification(Context context, String ChannelId, NotificationCompat.MessagingStyle messagingStyle, NotificationCompat.Action replyAction, int priority, String userId, String username) {
         Notification firstNotification = new NotificationCompat.Builder(context, ChannelId)
                 .setWhen(System.currentTimeMillis())
                 .setSmallIcon(R.mipmap.ic_launcher)
@@ -161,7 +188,7 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* We launched a group notification with a title of the set of messages and chats */
-    private void launchSummaryNotification(Context context, String ChannelId, int priority, String username) {
+    private static void launchSummaryNotification(Context context, String ChannelId, int priority, String username) {
         Notification summaryNotification = new NotificationCompat.Builder(context, ChannelId)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setStyle(new NotificationCompat.InboxStyle()
@@ -178,7 +205,7 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* Given a username, we take all your messages and create a messaging style to use for notifications */
-    private NotificationCompat.MessagingStyle createMessagingStyle(String username) {
+    private static NotificationCompat.MessagingStyle createMessagingStyle(String username) {
         // We create a messaging notification style
         NotificationCompat.MessagingStyle messagingStyle = new NotificationCompat.MessagingStyle("Me");
         // We go through the messages of a user, passing our map with its corresponding user
@@ -195,7 +222,7 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /*  we add a response mode */
-    private NotificationCompat.Action createReplyAction(Context context){
+    private static NotificationCompat.Action createReplyAction(Context context) {
         int requestID = (int) System.currentTimeMillis();
         RemoteInput remoteInput = new RemoteInput.Builder("key_text_reply").setLabel(context.getResources().getString(R.string.answer)).build();
         Intent replyIntent;
@@ -223,7 +250,7 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /*If the version is superior to Oreo we need to create notification channels. If you want to lower the priority or upload it from a notification, you must also specify it in the channel */
-    private void createChannels() {
+    private static void createChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channelHigh = new NotificationChannel(CHANNEL_ID_HIGH, NAME_CHANNEL_HIGH, NotificationManager.IMPORTANCE_HIGH);
             notificationManager.createNotificationChannel(channelHigh);
@@ -233,12 +260,12 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* Returns the number of active notifications, not counting the summary notification */
-    private int numNotificationsActive() {
+    public static int numNotificationsActive(Context context) {
         int count = 0;
         for (Map.Entry<String, Integer> entry : mapNotificationIds.entrySet()) {
             int id = entry.getValue();
             if (id != 0) {
-                boolean isActive = isNotificationActive(id);
+                boolean isActive = isNotificationActive(id, context);
                 if (isActive) {
                     count++;
                 }
@@ -247,28 +274,28 @@ public class FCM extends FirebaseMessagingService {
         return count;
     }
 
-    /* Returns the number of active notifications, not counting the summary notification */
-    public static int staticNumNotificationsActive(Context context) {
-        int count = 0;
-        for (Map.Entry<String, Integer> entry : mapNotificationIds.entrySet()) {
-            int id = entry.getValue();
-            if (id != 0) {
-                boolean isActive = Functions.isNotificationActive(id, context);
-                if (isActive) {
-                    count++;
-                }
-            }
-        }
-        return count;
-    }
+//    /* Returns the number of active notifications, not counting the summary notification */
+//    public static int staticNumNotificationsActive(Context context) {
+//        int count = 0;
+//        for (Map.Entry<String, Integer> entry : mapNotificationIds.entrySet()) {
+//            int id = entry.getValue();
+//            if (id != 0) {
+//                boolean isActive = Functions.isNotificationActive(id, context);
+//                if (isActive) {
+//                    count++;
+//                }
+//            }
+//        }
+//        return count;
+//    }
 
     /* Returns the id of the only active notification */
-    private int getUniqueNotificationActive() {
+    private static int getUniqueNotificationActive(Context context) {
         int notification = -1;
         for (Map.Entry<String, Integer> entry : mapNotificationIds.entrySet()) {
             int id = entry.getValue();
             if (id != 0) {
-                boolean isActive = isNotificationActive(id);
+                boolean isActive = isNotificationActive(id, context);
                 if (isActive) {
                     notification = id;
                 }
@@ -278,12 +305,12 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* If there is any notification that is not active, not counting the group notification */
-    private boolean anyNotificationNotActive() {
+    private static boolean anyNotificationNotActive(Context context) {
         boolean any = false;
         for (Map.Entry<String, Integer> entry : mapNotificationIds.entrySet()) {
             int id = entry.getValue();
             if (id != 0) {
-                boolean isActive = isNotificationActive(id);
+                boolean isActive = isNotificationActive(id, context);
                 if (!isActive) {
                     any = true;
                 }
@@ -293,14 +320,14 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* We obtain the total messages of actives notifications for each user saved in the map mapMessages */
-    private String getActiveMessagesChats(Context context, String username) {
+    private static String getActiveMessagesChats(Context context, String username) {
         int conversations = 0;
         int messages = 0;
         String totalMessagesChats = "";
         for (Map.Entry<String, List<Message>> entry : mapMessages.entrySet()) {
             String user = entry.getKey();
             int id = getNotificationId(user);
-            if (isNotificationActive(id) || id == getNotificationId(username)) {
+            if (isNotificationActive(id, context) || id == getNotificationId(username)) {
                 conversations++;
                 List<Message> listValues = entry.getValue();
                 messages += listValues.size();
@@ -311,7 +338,7 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* We obtain the total messages for each user saved in the map mapMessages */
-    private String getTotalMessagesChats(Context context) {
+    private static String getTotalMessagesChats(Context context) {
         int conversations = mapMessages.size();
         int messages = 0;
         String totalMessagesChats = "";
@@ -328,9 +355,9 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* Given a notification id, it tells you if it's active */
-    private boolean isNotificationActive(int notificationId) {
+    public static boolean isNotificationActive(int notificationId, Context context) {
         boolean is = false;
-        NotificationManager mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        NotificationManager mNotificationManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
         StatusBarNotification[] notifications = new StatusBarNotification[0];
         if (mNotificationManager != null) {
             notifications = mNotificationManager.getActiveNotifications();
@@ -352,7 +379,7 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* We create an intent to take you to Chat Activity that goes through MainActivity or CoversationActivity first */
-    private PendingIntent pendingIntentChat(Context context, String userId, String username) {
+    private static PendingIntent pendingIntentChat(Context context, String userId, String username) {
         int requestID = (int) System.currentTimeMillis();
         Intent intent1 = new Intent(context, MainActivity.class);
         intent1.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
@@ -364,8 +391,8 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* An intent that takes you to ConversationActivity or MainActivity */
-    private PendingIntent pendingIntentConver(Context context) {
-        Intent intent = new Intent(this, MainActivity.class);
+    private static PendingIntent pendingIntentConver(Context context) {
+        Intent intent = new Intent(context, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
         return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
     }
