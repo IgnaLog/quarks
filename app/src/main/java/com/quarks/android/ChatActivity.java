@@ -540,11 +540,12 @@ public class ChatActivity extends AppCompatActivity {
             socket.on("stop-typing", onStopTyping);
         }
 
+        /* Notification management. Remove the corresponding notification and update the group notification */
         if(FCM.numNotificationsActive(context) > 0){
             int id = FCM.getNotificationId(receiverUsername);
-            if (FCM.isNotificationActive(id, context)) {
-                NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context); // Create notification manager
-                if (FCM.numNotificationsActive(context) == 1) { // If there is only one user notification, we also cancel the summary notification
+            if (FCM.isNotificationActive(id, context)) { // If we come from being onPause or selecting a user in ConversationActivity. That user's notification is still active
+                NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+                if (FCM.numNotificationsActive(context) == 1) { // If there is only one user notification, we cancel individual and group notification
                     notificationManager.cancel(FCM.SUMMARY_NOTIFICATION_ID);
                     notificationManager.cancel(id);
                     FCM.mapNotificationIds.remove(receiverUsername);
@@ -556,7 +557,7 @@ public class ChatActivity extends AppCompatActivity {
                     FCM.updateMessageNotification(context, FCM.mapMessages);
                 }
             } else {
-                if (FCM.numNotificationsActive(context) > 1) {
+                if (FCM.numNotificationsActive(context) > 1) { // If we come to select the notification. The notification of that user is canceled. Then we update the group notification if it exists
                     FCM.mapNotificationIds.remove(receiverUsername);
                     FCM.mapMessages.remove(receiverUsername);
                     FCM.updateMessageNotification(context, FCM.mapMessages);
