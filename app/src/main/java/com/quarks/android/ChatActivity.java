@@ -540,25 +540,27 @@ public class ChatActivity extends AppCompatActivity {
             socket.on("stop-typing", onStopTyping);
         }
 
-        int id = FCM.getNotificationId(receiverUsername);
-        if (FCM.isNotificationActive(id, context)) {
-            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context); // Create notification manager
-            if (FCM.numNotificationsActive(context) == 1) { // If there is only one user notification, we also cancel the summary notification
-                notificationManager.cancel(FCM.SUMMARY_NOTIFICATION_ID);
-                notificationManager.cancel(id);
-                FCM.mapNotificationIds.remove(receiverUsername);
-                FCM.mapMessages.remove(receiverUsername);
+        if(FCM.numNotificationsActive(context) > 0){
+            int id = FCM.getNotificationId(receiverUsername);
+            if (FCM.isNotificationActive(id, context)) {
+                NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context); // Create notification manager
+                if (FCM.numNotificationsActive(context) == 1) { // If there is only one user notification, we also cancel the summary notification
+                    notificationManager.cancel(FCM.SUMMARY_NOTIFICATION_ID);
+                    notificationManager.cancel(id);
+                    FCM.mapNotificationIds.remove(receiverUsername);
+                    FCM.mapMessages.remove(receiverUsername);
+                } else {
+                    notificationManager.cancel(id);
+                    FCM.mapNotificationIds.remove(receiverUsername);
+                    FCM.mapMessages.remove(receiverUsername);
+                    FCM.updateMessageNotification(context, FCM.mapMessages);
+                }
             } else {
-                notificationManager.cancel(id);
-                FCM.mapNotificationIds.remove(receiverUsername);
-                FCM.mapMessages.remove(receiverUsername);
-                FCM.updateMessageNotification(context, FCM.mapMessages);
-            }
-        } else {
-            if (FCM.numNotificationsActive(context) > 1) {
-                FCM.mapNotificationIds.remove(receiverUsername);
-                FCM.mapMessages.remove(receiverUsername);
-                FCM.updateMessageNotification(context, FCM.mapMessages);
+                if (FCM.numNotificationsActive(context) > 1) {
+                    FCM.mapNotificationIds.remove(receiverUsername);
+                    FCM.mapMessages.remove(receiverUsername);
+                    FCM.updateMessageNotification(context, FCM.mapMessages);
+                }
             }
         }
     }
@@ -591,6 +593,7 @@ public class ChatActivity extends AppCompatActivity {
 
     /* All the view declarations, class assignments and SharedPreferences data retrieval are here */
     public void setStatements() {
+        /* Set views ids */
         rootView = findViewById(R.id.rootView);
         rvChat = findViewById(R.id.rvChat);
         etMessage = findViewById(R.id.etMessage);
@@ -603,6 +606,7 @@ public class ChatActivity extends AppCompatActivity {
         tvUsername = findViewById(R.id.tvUsername);
         tvTyping = findViewById(R.id.tvTyping);
 
+        /* Animations */
         animDateAppear = ObjectAnimator.ofFloat(tvDate, "translationY", 0f, 110f);
         animDateAppear.setInterpolator(new DecelerateInterpolator());
         animDateAppear.setDuration(200);
@@ -629,9 +633,8 @@ public class ChatActivity extends AppCompatActivity {
         receiverId = getIntent().getStringExtra("receiverId");
         receiverUsername = getIntent().getStringExtra("receiverUsername"); // We capture the username and id of the previous activity
 
+        /* Put the receiver's username in the title */
         tvUsername.setText(receiverUsername);
-        FCM.mapNotificationIds.remove(receiverUsername);
-        FCM.mapMessages.remove(receiverUsername);
     }
 
     /* Returns if the keyboard has appeared or been hidden since the last time */
