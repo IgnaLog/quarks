@@ -516,7 +516,6 @@ public class ChatActivity extends AppCompatActivity {
         }
     };
 
-
     /**
      * OVERRIDE
      **/
@@ -541,7 +540,7 @@ public class ChatActivity extends AppCompatActivity {
         }
 
         /* Notification management. Remove the corresponding notification and update the group notification */
-        if(FCM.numNotificationsActive(context) > 0){
+        if (FCM.numNotificationsActive(context) > 0) {
             int id = FCM.getNotificationId(receiverUsername);
             if (FCM.isNotificationActive(id, context)) { // If we come from being onPause or selecting a user in ConversationActivity. That user's notification is still active
                 NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
@@ -747,9 +746,11 @@ public class ChatActivity extends AppCompatActivity {
     /* Save a message in the local database, update the adapter and send the message to the addressee */
     public void sendMessage(String message, int channel) {
         etMessage.setText("");
+        // This is for you to leave a message date stamp as the first message
         if (!dataBaseHelper.thereIsConversation(receiverId)) {
             adapter.isLastItem();
         }
+
         values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, ""); // We store the message into the local data base and we obtain the id and time from the record stored
         String id = values.get("id");
         String dateTime = values.get("time");
@@ -766,6 +767,7 @@ public class ChatActivity extends AppCompatActivity {
         }
         socket.emit("private-message", jsonObjectData); // Here we must check if the receiving user is active or not to leave a pending message
     }
+    
 
     /* Returns if the keyboard has appeared or been hidden since the last time */
     public void addMessage(String id, String message, int channel, String time, String date, int pendingMessages) {

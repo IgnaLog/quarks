@@ -154,7 +154,9 @@ public class MainActivity extends AppCompatActivity {
                 "",
                 "",
                 c.getString(c.getColumnIndex("sender_username")),
-                c.getString(c.getColumnIndex("sender_id"))
+                c.getString(c.getColumnIndex("sender_id")),
+                c.getString(c.getColumnIndex("last_message")),
+                c.getString(c.getColumnIndex("time"))
         ));
     }
 
@@ -191,7 +193,9 @@ public class MainActivity extends AppCompatActivity {
                                     "",
                                     "",
                                     c.getString(c.getColumnIndex("sender_username")),
-                                    c.getString(c.getColumnIndex("sender_id"))
+                                    c.getString(c.getColumnIndex("sender_id")),
+                                    c.getString(c.getColumnIndex("last_message")),
+                                    c.getString(c.getColumnIndex("time"))
                             ));
                             c.moveToNext();
                             if (c.isLast()) {
@@ -211,7 +215,9 @@ public class MainActivity extends AppCompatActivity {
                                     "",
                                     "",
                                     c.getString(c.getColumnIndex("sender_username")),
-                                    c.getString(c.getColumnIndex("sender_id"))
+                                    c.getString(c.getColumnIndex("sender_id")),
+                                    c.getString(c.getColumnIndex("last_message")),
+                                    c.getString(c.getColumnIndex("time"))
                             ));
                             c.moveToNext();
                         }

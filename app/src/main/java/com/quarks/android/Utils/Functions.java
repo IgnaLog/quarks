@@ -55,21 +55,33 @@ import static android.content.Context.NOTIFICATION_SERVICE;
 
 public class Functions {
 
-//    /* Given a notification id, it tells you if it's active */
-//    public static boolean isNotificationActive(int notificationId, Context context) {
-//        boolean is = false;
-//        NotificationManager mNotificationManager = (NotificationManager) context.getSystemService(NOTIFICATION_SERVICE);
-//        StatusBarNotification[] notifications = new StatusBarNotification[0];
-//        if (mNotificationManager != null) {
-//            notifications = mNotificationManager.getActiveNotifications();
-//        }
-//        for (StatusBarNotification notification : notifications) {
-//            if (notification.getId() == notificationId) {
-//                is = true;
-//            }
-//        }
-//        return is;
-//    }
+    public static String formatConversationDate(String time, Context context) {
+        String convertedDate = "";
+
+        SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+        dateTimeFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+        simpleDateFormat.setTimeZone(TimeZone.getDefault());
+
+        SimpleDateFormat requiredDateFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        requiredDateFormat.setTimeZone(TimeZone.getDefault());
+
+        try {
+            Date date = dateTimeFormat.parse(time);
+            String dateToCompare = simpleDateFormat.format(date);
+            String dateNow = simpleDateFormat.format(new Date());
+            if (dateToCompare.equals(dateNow)) { // Same day, show only hours and minutes
+                convertedDate = requiredDateFormat.format(date);
+            }else{ // Another day, show only the date
+                convertedDate = dateToCompare;
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+        return convertedDate;
+    }
 
     /* Get the day before in string format */
     private static String getYesterdayDateString() {
@@ -82,7 +94,7 @@ public class Functions {
 
     /* It converts the dateTime of the messages saved in the local database into date format with its default timezone */
     public static String formatDate(String time, Context context) {
-        String convertedDate = null;
+        String convertedDate = "";
 
         SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
         dateTimeFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -108,7 +120,7 @@ public class Functions {
             } else if (dateToCompare.equals(dateYesterday)) { // Yesterday
                 convertedDate = context.getResources().getString(R.string.yesterday).toUpperCase();
             } else { // Other day
-                if (Locale.getDefault().toString().equals("es_ES")) { // Spanis format
+                if (Locale.getDefault().toString().equals("es_ES")) { // Spanish format
                     convertedDate = spanishDateFormat.format(date).toUpperCase();
                 } else {
                     convertedDate = defaultDateFormat.format(date).toUpperCase();

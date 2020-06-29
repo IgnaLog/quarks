@@ -13,7 +13,7 @@ import java.util.Map;
 public class DataBaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "dbquarks";
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 1;
 
     /* TABLE MESSAGES */
     private static final String TABLE_MESSAGES = "messages";
@@ -36,10 +36,14 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_CONVER_ID = "id";
     private static final String COLUMN_CONVER_SENDER_ID = "sender_id";
     private static final String COLUMN_CONVER_SENDER_USERNAME = "sender_username";
+    private static final String COLUMN_CONVER_LAST_MESSAGE = "last_message";
+    private static final String COLUMN_CONVER_TIME = "time";
     private static final String DATABASE_CREATE_CONVERSATIONS = "CREATE TABLE " + TABLE_CONVERSATIONS + " ( " +
             COLUMN_CONVER_ID + " INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
             COLUMN_CONVER_SENDER_ID + " VARCHAR(30) NOT NULL, " +
-            COLUMN_CONVER_SENDER_USERNAME + " VARCHAR(30) NOT NULL);";
+            COLUMN_CONVER_SENDER_USERNAME + " VARCHAR(30) NOT NULL, " +
+            COLUMN_CONVER_LAST_MESSAGE + " TEXT NOT NULL, " +
+            COLUMN_CONVER_TIME + " TIMESTAMP NOT NULL);";
 
     public DataBaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -111,13 +115,6 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         Map<String, String> values = new HashMap<String, String>();
         long resultID;
 
-        /* Insert a new conversation if it doesn't exist */
-        if(!thereIsConversation(senderId)){
-            cvConversation.put(COLUMN_CONVER_SENDER_ID, senderId);
-            cvConversation.put(COLUMN_CONVER_SENDER_USERNAME, senderUsername);
-            db.insert(TABLE_CONVERSATIONS, null, cvConversation);
-        }
-
         if(dateTime.equals("")){ // Without dateTime
             cvMessage.put(COLUMN_SENDER_ID, senderId);
             cvMessage.put(COLUMN_SENDER_USERNAME, senderUsername);
@@ -136,6 +133,20 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         String time = getTime(resultID);
         values.put("id", String.valueOf(resultID));
         values.put("time", time);
+
+        /* Insert a new conversation if it doesn't exist */
+        if(!thereIsConversation(senderId)){
+            cvConversation.put(COLUMN_CONVER_SENDER_ID, senderId);
+            cvConversation.put(COLUMN_CONVER_SENDER_USERNAME, senderUsername);
+            cvConversation.put(COLUMN_CONVER_LAST_MESSAGE, message);
+            cvConversation.put(COLUMN_CONVER_TIME, time);
+            db.insert(TABLE_CONVERSATIONS, null, cvConversation);
+        }else{
+            cvConversation.put(COLUMN_CONVER_LAST_MESSAGE, message);
+            cvConversation.put(COLUMN_CONVER_TIME, time);
+            db.update(TABLE_CONVERSATIONS, cvConversation, COLUMN_CONVER_SENDER_ID + "=" + senderId, null);
+        }
+
         return values;
     }
 

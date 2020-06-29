@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.quarks.android.ChatActivity;
 import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.R;
+import com.quarks.android.Utils.Functions;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
@@ -43,12 +44,16 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         String filename = alConversations.get(position).getFilename();
         final String username = alConversations.get(position).getUsername();
         final String userId = alConversations.get(position).getUserId();
+        String lastMessage = alConversations.get(position).getLastMessage();
+        String time = alConversations.get(position).geTime();
 
         if(!urlPhoto.equals("")){ //  if(!filename.equals("")){
             //Picasso.get().load(mContext.getResources().getString(R.string.url_get_image) + filename).fit().centerCrop().into(holder.civAvatar); // From my server
-            Picasso.get().load(urlPhoto).fit().centerCrop().into(holder.civAvatar); // From cloudinary server. Need to change server response!
+            Picasso.get().load(urlPhoto).fit().centerCrop().into(holder.civAvatar); // From Cloudinary server. Need to change server response!
         }
         holder.tvUsername.setText(username);
+        holder.tvTypingAndLastMessage.setText(lastMessage);
+        holder.tvDate.setText(Functions.formatConversationDate(time, mContext));
 
         holder.itemConversation.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -65,7 +70,7 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         private Context context;
         private ConstraintLayout itemConversation;
         private CircleImageView civAvatar;
-        private TextView tvUsername;
+        private TextView tvUsername, tvTypingAndLastMessage, tvDate, tvBadge;
 
         ViewHolder(View itemView) {
             super(itemView);
@@ -73,6 +78,9 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
             itemConversation = itemView.findViewById(R.id.itemConversation);
             civAvatar = itemView.findViewById(R.id.civAvatar);
             tvUsername = itemView.findViewById(R.id.tvUsername);
+            tvTypingAndLastMessage = itemView.findViewById(R.id.tvTypingAndLastMessage);
+            tvDate = itemView.findViewById(R.id.tvDate);
+            tvBadge = itemView.findViewById(R.id.tvBadge);
         }
     }
 
