@@ -5,7 +5,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,13 +22,15 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_CHANNEL = "channel";
     private static final String COLUMN_MESSAGE = "message";
     private static final String COLUMN_TIME = "time";
+    private static final String COLUMN_PENDING = "pending";
     private static final String DATABASE_CREATE_MESSAGES = "CREATE TABLE " + TABLE_MESSAGES + " ( " +
             COLUMN_ID + " INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
             COLUMN_SENDER_ID + " VARCHAR(30) NOT NULL, " +
             COLUMN_SENDER_USERNAME + " VARCHAR(30) NOT NULL, " +
             COLUMN_CHANNEL + " INTEGER NOT NULL, " +
             COLUMN_MESSAGE + " TEXT NOT NULL, " +
-            COLUMN_TIME + " TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);";
+            COLUMN_TIME + " TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
+            COLUMN_PENDING + " INTEGER NOT NULL);";
 
     /* TABLE CONVERSATIONS */
     private static final String TABLE_CONVERSATIONS = "conversations";
@@ -79,6 +80,18 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return cursor;
     }
 
+    /* Function that gets a user conversation */
+    public Cursor getConversation(String senderId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String sql = "SELECT * FROM " + TABLE_CONVERSATIONS + "  WHERE " + COLUMN_CONVER_SENDER_ID + "= '" + senderId + "';";
+        Cursor cursor = null;
+        if (db != null) {
+            cursor = db.rawQuery(sql, null);
+        }
+        return cursor;
+    }
+
     /* Function that gets all the messages from a particular sender */
     public Cursor getAllMessages(String senderId) {
         SQLiteDatabase db = this.getReadableDatabase();
@@ -91,8 +104,28 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return cursor;
     }
 
+    /* Function that leaves pending messages with the value of zero to mark them as read */
+    public void updatePendingMessages(String senderId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cvMessage = new ContentValues();
+        cvMessage.put(COLUMN_PENDING, 0);
+        db.update(TABLE_MESSAGES, cvMessage, COLUMN_SENDER_ID + "=" + senderId + " AND " + COLUMN_PENDING + "=" + 1, null);
+    }
+
+    /* Function that gets all the pending messages from a particular sender */
+    public Cursor getAllPendingMessages(String senderId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String sql = "SELECT * FROM " + TABLE_MESSAGES + " WHERE " + COLUMN_SENDER_ID + " = '" + senderId + "' AND " + COLUMN_PENDING + " = 1;";
+        Cursor cursor = null;
+        if (db != null) {
+            cursor = db.rawQuery(sql, null);
+        }
+        return cursor;
+    }
+
     /* Check if there is a conversation for a senderId */
-    public boolean thereIsConversation(String senderId){
+    public boolean thereIsConversation(String senderId) {
         SQLiteDatabase db = this.getReadableDatabase();
         int count = 0;
 
@@ -101,32 +134,37 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         if (db != null) {
             cursor = db.rawQuery(sql, null);
         }
-        while (cursor.moveToNext()) {
-            count = cursor.getInt(cursor.getColumnIndex("result"));
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                count = cursor.getInt(cursor.getColumnIndex("result"));
+            }
+            cursor.close();
         }
         return count > 0;
     }
 
     /* Function that saves a message in the database. Insert a new conversation if it doesn't exist. Returns a Map with the new id of the message entered and its date and time */
-    public Map<String, String> storeMessage(String senderId, String senderUsername, String message, int channel, String dateTime) {
+    public Map<String, String> storeMessage(String senderId, String senderUsername, String message, int channel, String dateTime, int pending) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cvMessage = new ContentValues();
         ContentValues cvConversation = new ContentValues();
         Map<String, String> values = new HashMap<String, String>();
         long resultID;
 
-        if(dateTime.equals("")){ // Without dateTime
+        if (dateTime.equals("")) { // Without dateTime
             cvMessage.put(COLUMN_SENDER_ID, senderId);
             cvMessage.put(COLUMN_SENDER_USERNAME, senderUsername);
             cvMessage.put(COLUMN_MESSAGE, message);
             cvMessage.put(COLUMN_CHANNEL, channel);
+            cvMessage.put(COLUMN_PENDING, pending);
             resultID = db.insert(TABLE_MESSAGES, null, cvMessage);
-        }else{ // With dateTime established
+        } else { // With dateTime established
             cvMessage.put(COLUMN_SENDER_ID, senderId);
             cvMessage.put(COLUMN_SENDER_USERNAME, senderUsername);
             cvMessage.put(COLUMN_MESSAGE, message);
             cvMessage.put(COLUMN_CHANNEL, channel);
             cvMessage.put(COLUMN_TIME, dateTime);
+            cvMessage.put(COLUMN_PENDING, pending);
             resultID = db.insert(TABLE_MESSAGES, null, cvMessage);
         }
 
@@ -135,13 +173,13 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put("time", time);
 
         /* Insert a new conversation if it doesn't exist */
-        if(!thereIsConversation(senderId)){
+        if (!thereIsConversation(senderId)) {
             cvConversation.put(COLUMN_CONVER_SENDER_ID, senderId);
             cvConversation.put(COLUMN_CONVER_SENDER_USERNAME, senderUsername);
             cvConversation.put(COLUMN_CONVER_LAST_MESSAGE, message);
             cvConversation.put(COLUMN_CONVER_TIME, time);
             db.insert(TABLE_CONVERSATIONS, null, cvConversation);
-        }else{
+        } else {
             cvConversation.put(COLUMN_CONVER_LAST_MESSAGE, message);
             cvConversation.put(COLUMN_CONVER_TIME, time);
             db.update(TABLE_CONVERSATIONS, cvConversation, COLUMN_CONVER_SENDER_ID + "=" + senderId, null);

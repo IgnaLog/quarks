@@ -18,6 +18,8 @@ import com.quarks.android.Utils.Functions;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -25,10 +27,14 @@ import de.hdodenhof.circleimageview.CircleImageView;
 public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdapter.ViewHolder> {
     private ArrayList<ConversationItem> alConversations = new ArrayList<ConversationItem>();
     private Context mContext;
+    private Map<String, Integer> mapSendersId = new HashMap<String, Integer>();
 
     public ConversationsAdapter(Context context, ArrayList<ConversationItem> alConversations) {
         mContext = context;
         this.alConversations = alConversations;
+        for(int i = 0; i < this.alConversations.size(); i++) {
+            mapSendersId.put(this.alConversations.get(i).getUserId(), i);
+        }
     }
 
     @NonNull
@@ -91,6 +97,11 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
 
     public void Clear() {
         alConversations.clear();
+    }
+
+    public int indexOf(String senderId) {
+        Integer position = this.mapSendersId.get(senderId);
+        return position == null ? -1 : position;
     }
 
     public void removeAt(int position) {

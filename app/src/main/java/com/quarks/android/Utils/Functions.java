@@ -73,6 +73,8 @@ public class Functions {
             String dateNow = simpleDateFormat.format(new Date());
             if (dateToCompare.equals(dateNow)) { // Same day, show only hours and minutes
                 convertedDate = requiredDateFormat.format(date);
+            }else if(dateToCompare.equals(getYesterdayDateString())){
+                convertedDate = context.getResources().getString(R.string.yesterday);
             }else{ // Another day, show only the date
                 convertedDate = dateToCompare;
             }

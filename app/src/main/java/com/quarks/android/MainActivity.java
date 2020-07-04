@@ -7,10 +7,9 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
-import android.service.notification.StatusBarNotification;
+import android.util.Log;
 import android.view.View;
 import android.widget.AbsListView;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -21,13 +20,24 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.quarks.android.Adapters.ConversationsAdapter;
 import com.quarks.android.CustomViews.LoadingWheel;
 import com.quarks.android.Items.ConversationItem;
-import com.quarks.android.Items.MessageItem;
 import com.quarks.android.Utils.DataBaseHelper;
-import com.quarks.android.Utils.FCM;
+import com.quarks.android.Utils.Functions;
+import com.quarks.android.Utils.Preferences;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
-import static android.widget.AbsListView.OnScrollListener.SCROLL_STATE_IDLE;
+import io.socket.client.IO;
+import io.socket.client.Socket;
+import io.socket.emitter.Emitter;
+
+import static com.quarks.android.Utils.Functions.formatDate;
+import static com.quarks.android.Utils.Functions.formatTime;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -36,6 +46,9 @@ public class MainActivity extends AppCompatActivity {
     private LoadingWheel loadingWheel;
     private View lyCiruclarProgressBar;
     private Context context = MainActivity.this;
+    private Socket socket;
+    private String userId = "", username = "";
+    private Map<String, String> values = new HashMap<String, String>();
 
     private ConversationsAdapter adapter;
     private ArrayList<ConversationItem> alConversations = new ArrayList<ConversationItem>();
@@ -53,6 +66,12 @@ public class MainActivity extends AppCompatActivity {
     private static int nextItemsToShow = 100; // Number of messages to display each time there is a new load
     private static int indexItems = 0; // Indicator to know where we are in the message cursor of the local database
 
+    private boolean typing = false;
+    private Handler typingHandler = new Handler();
+    private static final int TYPING_TIMER_LENGTH = 1500;
+
+    private static final int PENDING = 1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -68,6 +87,9 @@ public class MainActivity extends AppCompatActivity {
         linearLayoutManager = new LinearLayoutManager(context);
 
         loadingWheel = new LoadingWheel(context, lyCiruclarProgressBar); // To show a wheel loading
+
+        userId = Preferences.getUserId(context);
+        username = Preferences.getUserName(context);
 
         /** DESIGN **/
 
@@ -111,6 +133,164 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * EMITTERS THREADS
+     **/
+
+    /* We have been connected, so we send our user data */
+    private Emitter.Listener connected = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject jsonObjectData = new JSONObject();
+                    try {
+                        // My user
+                        jsonObjectData.put("userId", userId);
+                        jsonObjectData.put("username", username);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    socket.emit("add-user", jsonObjectData);
+                }
+            });
+        }
+    };
+
+    /* We receive live messages */
+    private Emitter.Listener listeningMessages = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject data = (JSONObject) args[0];
+                    String senderId = "";
+                    String senderUsername = "";
+                    String message = "";
+                    int channel = 2;
+
+                    try {
+                        senderId = data.getString("senderId");
+                        senderUsername = data.getString("senderUsername");
+                        message = data.getString("content");
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                    /* We save the message in the local database and collect the date and the message id to compose a new item */
+                    values = dataBaseHelper.storeMessage(senderId, senderUsername, message, channel, "", PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
+                    String dateTime = values.get("time"); // Comes from local database when saving the message
+
+                    // ver si existe, insertar o Actualizar item y mover
+                    if (dataBaseHelper.thereIsConversation(senderId)) { // Actualizar y mover
+                        // Actualizar
+                        int position = adapter.indexOf(senderId);
+                        ConversationItem conversationItem = new ConversationItem(
+                                alConversations.get(position).getUrlPhoto(),
+                                alConversations.get(position).getFilename(),
+                                alConversations.get(position).getUsername(),
+                                alConversations.get(position).getUserId(),
+                                message,
+                                dateTime);
+                        if (position != -1) {
+                            alConversations.set(position, conversationItem);
+                            adapter.notifyItemChanged(position);
+                        }
+
+                        // Mover
+                        int fromPosition = adapter.indexOf(senderId);
+                        int toPosition = 1;
+
+                        ConversationItem item = alConversations.get(fromPosition);
+                        alConversations.remove(fromPosition);
+                        alConversations.add(toPosition, item);
+
+                        adapter.notifyItemMoved(fromPosition, toPosition);
+                    } else { // insertar
+                        int insertIndex = 1;
+                        Cursor c = dataBaseHelper.getConversation(senderId);
+                        c.moveToFirst();
+                        ConversationItem conversationItem = new ConversationItem(
+                                "",
+                                "",
+                                c.getString(c.getColumnIndex("sender_username")),
+                                c.getString(c.getColumnIndex("sender_id")),
+                                c.getString(c.getColumnIndex("last_message")),
+                                c.getString(c.getColumnIndex("time"))
+                        );
+                        alConversations.add(insertIndex, conversationItem);
+                        adapter.notifyItemInserted(insertIndex);
+                    }
+                }
+            });
+        }
+    };
+
+    /* The receiver is typing */
+    private Emitter.Listener onTyping = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject data = (JSONObject) args[0];
+                    String senderId = "";
+                    try {
+                        senderId = data.getString("senderId");
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    int position = adapter.indexOf(senderId);
+                    ConversationItem conversationItem = new ConversationItem(
+                            alConversations.get(position).getUrlPhoto(),
+                            alConversations.get(position).getFilename(),
+                            alConversations.get(position).getUsername(),
+                            alConversations.get(position).getUserId(),
+                            getResources().getString(R.string.typing),
+                            alConversations.get(position).geTime());
+
+                    if (position != -1) {
+                        alConversations.set(position, conversationItem);
+                        adapter.notifyItemChanged(position);
+                    }
+                }
+            });
+        }
+    };
+
+    /* The receiver has stopped typing */
+    private Emitter.Listener onStopTyping = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject data = (JSONObject) args[0];
+                    String senderId = "";
+                    try {
+                        senderId = data.getString("senderId");
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    int position = adapter.indexOf(senderId);
+                    ConversationItem conversationItem = new ConversationItem(
+                            alConversations.get(position).getUrlPhoto(),
+                            alConversations.get(position).getFilename(),
+                            alConversations.get(position).getUsername(),
+                            alConversations.get(position).getUserId(),
+                            alConversations.get(position).getLastMessage(),
+                            alConversations.get(position).geTime());
+
+                    if (position != -1) {
+                        alConversations.set(position, conversationItem);
+                        adapter.notifyItemChanged(position);
+                    }
+                }
+            });
+        }
+    };
 
     /**
      * OVERRIDE
@@ -125,18 +305,28 @@ public class MainActivity extends AppCompatActivity {
         cursor = dataBaseHelper.getAllConversations();
         fetchData(true, cursor); // Load conversations again
 
-        // We clean the notifications after 1'5 seconds. It's important to clean the map mapNotificationIds so that new notifications show well
-//        new Handler().postDelayed(new Runnable() {
-//            @Override
-//            public void run() {
-//                NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-//                if (notificationManager != null) {
-//                    notificationManager.cancelAll();
-//
-//                   // FCM.mapNotificationIds.clear();
-//                }
-//            }
-//        },0);
+        // Quitamos todas las notificaciones
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager != null) {
+            notificationManager.cancelAll();
+        }
+
+        // Volvemos a conectar el socket
+        if (!socket.connected()) {
+            try {
+                socket = IO.socket(getResources().getString(R.string.url_chat));
+            } catch (URISyntaxException e) {
+                Log.d("Error", "Error socketURL: " + e.toString());
+            }
+            socket.connect();
+            socket.on("connected", connected);
+
+            socket.on("pending-messages", getPendingMessages);
+            socket.on("send-message", listeningMessages);
+
+            socket.on("typing", onTyping);
+            socket.on("stop-typing", onStopTyping);
+        }
     }
 
     @Override

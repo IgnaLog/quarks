@@ -25,7 +25,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -102,6 +101,10 @@ public class ChatActivity extends AppCompatActivity {
     private Handler typingHandler = new Handler();
     private static final int TYPING_TIMER_LENGTH = 1500;
 
+    private static int totalPending = 0;
+    private static final int NOT_PENDING = 0;
+    private boolean firstPendingMessage = true;
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -151,6 +154,7 @@ public class ChatActivity extends AppCompatActivity {
                     JSONObject jsonObjectData = new JSONObject();
                     try {
                         jsonObjectData.put("receiverId", receiverId);
+                        jsonObjectData.put("userId", userId);
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
@@ -326,15 +330,10 @@ public class ChatActivity extends AppCompatActivity {
             public void onClick(View v) {
                 /* We send the message */
                 if (!etMessage.getText().toString().equals("")) {
-                    sendMessage(etMessage.getText().toString().trim(), 1);
+                    sendMessage(etMessage.getText().toString().trim(), 1, NOT_PENDING);
 
-                    /* This block of code is responsible for removing the textView with the number of unread messages */
-                    if (positionPendingMessages != -1) {
-                        itemWithPendingMessages.setPendingMessages(0);
-                        alMessage.set(positionPendingMessages, itemWithPendingMessages);
-                        adapter.notifyItemChanged(positionPendingMessages);
-                        positionPendingMessages = -1;
-                    }
+                    // We remove the mark with the number of unread messages
+                    cleanItemWithPendingMessages();
                 }
             }
         });
@@ -393,11 +392,14 @@ public class ChatActivity extends AppCompatActivity {
                                 String time = formatMongoTime(mongoTime);
                                 int channel = 2;
 
-                                /* We collect the number of messages to pass it to the item. For the first message, we mark the new messages with the number of messages to read */
+                                /* We collect the number of pending messages to display in the textView of the first item.
+                                If there are previous pending messages, we only update the corresponding item */
                                 if (i == 0) {
-                                    pendingMessages = messages.length();
-                                } else {
-                                    pendingMessages = 0;
+                                    if(totalPending > 0){
+                                        updateItemWithPendingMessages(messages.length());
+                                    }else{
+                                        pendingMessages = messages.length();
+                                    }
                                 }
 
                                 /* If it is the beginning of the conversation, we mark that it's the last item, so that the adapter shows the date of the first message */
@@ -406,20 +408,20 @@ public class ChatActivity extends AppCompatActivity {
                                 }
 
                                 /* We save the message in the local database and collect the date and the message id to compose a new item */
-                                values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, time); // We store the message into the local data base and we obtain the id and time from the record stored
+                                values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, time, NOT_PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
                                 String id = values.get("id");
                                 String dateTime = values.get("time"); // Comes from local database when saving the message
                                 addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages); // We add a new item to the adapter
 
-                                /* This is to show the textView with the number of unread messages.
-                                If it is the first message, we capture the current position of alMessage and create a new item with the appropriate data */
-                                if (i == 0) {
-                                    positionPendingMessages = alMessage.size() - 1;
-                                    itemWithPendingMessages = new MessageItem(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages);
+                                // We save this item so we can make changes later. As long as there are no previous pending messages
+                                if (i == 0 && totalPending == 0) {
+                                    recordItemWithPendingMessages(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages);
                                 }
                             }
-                            // We move the RecyclerView to the message of pending messages
-                            linearLayoutManager.scrollToPositionWithOffset(adapter.getItemCount() - messages.length(), 280);
+                            // We move the RecyclerView to the message with the pending messages mark, as long as there are no previous pending messages
+                            if(totalPending == 0){
+                                linearLayoutManager.scrollToPositionWithOffset(adapter.getItemCount() - messages.length(), 280);
+                            }
                         }
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -437,12 +439,10 @@ public class ChatActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     JSONObject data = (JSONObject) args[0];
-                    String username = "";
                     String message = "";
                     int channel = 2;
 
                     try {
-                        username = data.getString("username");
                         message = data.getString("content");
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -454,19 +454,13 @@ public class ChatActivity extends AppCompatActivity {
                     }
 
                     /* We save the message in the local database and collect the date and the message id to compose a new item */
-                    values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, ""); // We store the message into the local data base and we obtain the id and time from the record stored
+                    values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, "", NOT_PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
                     String id = values.get("id");
                     String dateTime = values.get("time"); // Comes from local database when saving the message
                     addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), 0); // We add a new item to the adapter
 
-                    /* This code block is responsible for adding one more message to the textView with the number of unread messages.
-                    To do this, if the variable positionPendingMessages contains the position in which the textView of unread messages is displayed, we increase the number the value of unread messages */
-                    if (positionPendingMessages != -1) {
-                        int count = itemWithPendingMessages.getPendingMessages();
-                        itemWithPendingMessages.setPendingMessages(count + 1);
-                        alMessage.set(positionPendingMessages, itemWithPendingMessages);
-                        adapter.notifyItemChanged(positionPendingMessages);
-                    }
+                    // We add a new unread message
+                    updateItemWithPendingMessages(1);
                 }
             });
         }
@@ -507,6 +501,7 @@ public class ChatActivity extends AppCompatActivity {
             JSONObject jsonObjectData = new JSONObject();
             try {
                 jsonObjectData.put("receiverId", receiverId);
+                jsonObjectData.put("userId", userId);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -571,13 +566,9 @@ public class ChatActivity extends AppCompatActivity {
         // Disconnect the sockets so that the server send a notification for new messages
         socket.emit("disconnect", "");
         socket.disconnect();
+
         // We remove the textView in the item that contains the number of unread messages
-        if (positionPendingMessages != -1) {
-            itemWithPendingMessages.setPendingMessages(0);
-            alMessage.set(positionPendingMessages, itemWithPendingMessages);
-            adapter.notifyItemChanged(positionPendingMessages);
-            positionPendingMessages = -1;
-        }
+        cleanItemWithPendingMessages();
     }
 
     @Override
@@ -637,6 +628,36 @@ public class ChatActivity extends AppCompatActivity {
         tvUsername.setText(receiverUsername);
     }
 
+
+    /* This function stores the item that will contain the number of unread messages and their position. In order to make changes to that item later */
+    private void recordItemWithPendingMessages(String id, String message, int channel, String time, String date, int pendingMessages) {
+        positionPendingMessages = alMessage.size() - 1;
+        itemWithPendingMessages = new MessageItem(id, message, channel, time, date, pendingMessages);
+    }
+
+    /* This function is responsible for adding one more message to the textView with the number of unread messages.
+       To do this, if the variable positionPendingMessages contains the position in which the textView of unread messages is displayed,
+       we increase the number the value of unread messages */
+    private void updateItemWithPendingMessages(int increment) {
+        if (positionPendingMessages != -1) {
+            int count = itemWithPendingMessages.getPendingMessages();
+            itemWithPendingMessages.setPendingMessages(count + increment);
+            alMessage.set(positionPendingMessages, itemWithPendingMessages);
+            adapter.notifyItemChanged(positionPendingMessages);
+        }
+    }
+
+    /* This function is responsible for removing the textView with the number of unread messages */
+    private void cleanItemWithPendingMessages() {
+        if (positionPendingMessages != -1) {
+            itemWithPendingMessages.setPendingMessages(0);
+            alMessage.set(positionPendingMessages, itemWithPendingMessages);
+            adapter.notifyItemChanged(positionPendingMessages);
+            positionPendingMessages = -1;
+            totalPending = 0;
+        }
+    }
+
     /* Returns if the keyboard has appeared or been hidden since the last time */
     public boolean hasKeyboardStateChanged() {
         boolean hasChanged = false;
@@ -660,38 +681,72 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     /* Function that loads the cursor data into the ArrayList */
-    public void loadItems(@NonNull Cursor c) {
-        alMessage.add(new MessageItem(
-                c.getString(c.getColumnIndex("id")),
-                c.getString(c.getColumnIndex("message")),
-                c.getInt(c.getColumnIndex("channel")),
-                Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
-                Functions.formatDate(c.getString(c.getColumnIndex("time")), context),
-                0
-        ));
+    public void loadItems(@NonNull Cursor c, int totalPending) {
+        // If it is the first message found with the value pending 1, then we enter the value of totalPending. This is to show the total of unread messages in a textView later
+        if (c.getInt(c.getColumnIndex("pending")) == 1 && firstPendingMessage) {
+            firstPendingMessage = false;
+            alMessage.add(new MessageItem(
+                    c.getString(c.getColumnIndex("id")),
+                    c.getString(c.getColumnIndex("message")),
+                    c.getInt(c.getColumnIndex("channel")),
+                    Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
+                    Functions.formatDate(c.getString(c.getColumnIndex("time")), context),
+                    totalPending
+            ));
+            // We save this item so we can make changes later
+            recordItemWithPendingMessages(
+                    c.getString(c.getColumnIndex("id")),
+                    c.getString(c.getColumnIndex("message")),
+                    c.getInt(c.getColumnIndex("channel")),
+                    Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
+                    Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
+                    totalPending);
+        } else {
+            alMessage.add(new MessageItem(
+                    c.getString(c.getColumnIndex("id")),
+                    c.getString(c.getColumnIndex("message")),
+                    c.getInt(c.getColumnIndex("channel")),
+                    Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
+                    Functions.formatDate(c.getString(c.getColumnIndex("time")), context),
+                    0
+            ));
+        }
     }
 
     /* Function that depending on whether there is a lot of data, loads the data in batches */
     public void fetchData(@NonNull Boolean firstLoad, final Cursor c) {
         if (firstLoad) {
+            Cursor cursorPending = dataBaseHelper.getAllPendingMessages(receiverId);
+            totalPending = cursorPending.getCount();
+            if (totalPending >= limitItemsToScroll) {
+                limitItemsToScroll = totalPending + 50;
+                itemsToShow = totalPending + 50;
+            }
             totalCursor = c.getCount();
             if (totalCursor > limitItemsToScroll) { // We exceed the limit set by the developer to start loading items in batches
                 c.moveToPosition(totalCursor - itemsToShow);
                 for (int i = 0; i < itemsToShow; i++) {
-                    loadItems(c);
+                    loadItems(c, totalPending);
                     c.moveToNext();
                 }
                 indexItems = totalCursor - itemsToShow;
             } else { // We do not exceed the limit set by the developer. Therefore, we load the data normally
                 while (c.moveToNext()) {
-                    loadItems(c);
+                    loadItems(c, totalPending);
                     if (c.isLast()) {
                         adapter.isLastItem();
                     }
                 }
             }
             adapter.notifyDataSetChanged();
-            rvChat.scrollToPosition(adapter.getItemCount() - 1);
+            if (totalPending > 0) {
+                // We move the RecyclerView to the message of pending messages
+                linearLayoutManager.scrollToPositionWithOffset(adapter.getItemCount() - totalPending, 280);
+                dataBaseHelper.updatePendingMessages(receiverId); // We leave the pending messages with the value of zero to mark them as read
+            } else {
+                rvChat.scrollToPosition(adapter.getItemCount() - 1);
+            }
+
         } else {
             loadingWheel.setLoading(true); // We show a wheel loading
             new Handler().postDelayed(new Runnable() {
@@ -718,7 +773,6 @@ public class ChatActivity extends AppCompatActivity {
                         alMessage.addAll(0, alMessageAux);
                         c.close();
                         adapter.notifyItemRangeInserted(0, alMessageAux.size());
-                        loadingWheel.setLoading(false);
                     } else {  // We continue loading batches of items
                         c.moveToPosition(indexItems - nextItemsToShow);
                         ArrayList<MessageItem> alMessageAux = new ArrayList<MessageItem>();
@@ -736,22 +790,22 @@ public class ChatActivity extends AppCompatActivity {
                         alMessage.addAll(0, alMessageAux);
                         indexItems = indexItems - nextItemsToShow;
                         adapter.notifyItemRangeInserted(0, alMessageAux.size());
-                        loadingWheel.setLoading(false);
                     }
+                    loadingWheel.setLoading(false);
                 }
             }, 200); // It is important to put a delay so that when you scroll very fast it does not get blocked
         }
     }
 
     /* Save a message in the local database, update the adapter and send the message to the addressee */
-    public void sendMessage(String message, int channel) {
+    public void sendMessage(String message, int channel, int pending) {
         etMessage.setText("");
         // This is for you to leave a message date stamp as the first message
         if (!dataBaseHelper.thereIsConversation(receiverId)) {
             adapter.isLastItem();
         }
 
-        values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, ""); // We store the message into the local data base and we obtain the id and time from the record stored
+        values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, "", pending); // We store the message into the local data base and we obtain the id and time from the record stored
         String id = values.get("id");
         String dateTime = values.get("time");
         addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), 0); // Add message from the sender to the activity
@@ -767,10 +821,11 @@ public class ChatActivity extends AppCompatActivity {
         }
         socket.emit("private-message", jsonObjectData); // Here we must check if the receiving user is active or not to leave a pending message
     }
-    
+
 
     /* Returns if the keyboard has appeared or been hidden since the last time */
-    public void addMessage(String id, String message, int channel, String time, String date, int pendingMessages) {
+    public void addMessage(String id, String message, int channel, String time, String date,
+                           int pendingMessages) {
         newMessage = true; // Boolean to prevent tvDate animation appear
         alMessage.add(adapter.getItemCount(), new MessageItem(
                 id,
