@@ -55,6 +55,17 @@ import static android.content.Context.NOTIFICATION_SERVICE;
 
 public class Functions {
 
+    public static String formatMongoTime(String mongoTime) {
+        String[] parts = mongoTime.split("T");
+        String date = parts[0];
+        String time = parts[1];
+
+        String[] partsOfTime = time.split("\\.");
+        String realTime = partsOfTime[0];
+
+        return date + " " + realTime;
+    }
+
     public static String formatConversationDate(String time, Context context) {
         String convertedDate = "";
 

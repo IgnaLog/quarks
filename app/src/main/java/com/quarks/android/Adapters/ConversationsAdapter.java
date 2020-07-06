@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.quarks.android.ChatActivity;
 import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.R;
+import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.Functions;
 import com.squareup.picasso.Picasso;
 
@@ -28,9 +29,11 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     private ArrayList<ConversationItem> alConversations = new ArrayList<ConversationItem>();
     private Context mContext;
     private Map<String, Integer> mapSendersId = new HashMap<String, Integer>();
+    private DataBaseHelper dataBaseHelper;
 
     public ConversationsAdapter(Context context, ArrayList<ConversationItem> alConversations) {
         mContext = context;
+        dataBaseHelper = new DataBaseHelper(context);
         this.alConversations = alConversations;
         for(int i = 0; i < this.alConversations.size(); i++) {
             mapSendersId.put(this.alConversations.get(i).getUserId(), i);
@@ -60,6 +63,15 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         holder.tvUsername.setText(username);
         holder.tvTypingAndLastMessage.setText(lastMessage);
         holder.tvDate.setText(Functions.formatConversationDate(time, mContext));
+
+        if(alConversations.get(position).geNumNewMessages() > 0){
+            holder.tvBadge.setText(alConversations.get(position).geNumNewMessages());
+            holder.tvBadge.setVisibility(View.VISIBLE);
+        }else{
+            holder.tvBadge.setText(0);
+            holder.tvBadge.setVisibility(View.INVISIBLE);
+        }
+
 
         holder.itemConversation.setOnClickListener(new View.OnClickListener() {
             @Override

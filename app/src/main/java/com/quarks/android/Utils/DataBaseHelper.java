@@ -39,12 +39,14 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_CONVER_SENDER_USERNAME = "sender_username";
     private static final String COLUMN_CONVER_LAST_MESSAGE = "last_message";
     private static final String COLUMN_CONVER_TIME = "time";
+    private static final String COLUMN_CONVER_NEW_MESSAGES = "new_messages";
     private static final String DATABASE_CREATE_CONVERSATIONS = "CREATE TABLE " + TABLE_CONVERSATIONS + " ( " +
             COLUMN_CONVER_ID + " INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
             COLUMN_CONVER_SENDER_ID + " VARCHAR(30) NOT NULL, " +
             COLUMN_CONVER_SENDER_USERNAME + " VARCHAR(30) NOT NULL, " +
             COLUMN_CONVER_LAST_MESSAGE + " TEXT NOT NULL, " +
-            COLUMN_CONVER_TIME + " TIMESTAMP NOT NULL);";
+            COLUMN_CONVER_TIME + " TIMESTAMP NOT NULL, " +
+            COLUMN_CONVER_NEW_MESSAGES + " INTEGER NOT NULL);";
 
     public DataBaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -173,19 +175,71 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         values.put("time", time);
 
         /* Insert a new conversation if it doesn't exist */
+//        if (!thereIsConversation(senderId)) {
+//            cvConversation.put(COLUMN_CONVER_SENDER_ID, senderId);
+//            cvConversation.put(COLUMN_CONVER_SENDER_USERNAME, senderUsername);
+//            cvConversation.put(COLUMN_CONVER_LAST_MESSAGE, message);
+//            cvConversation.put(COLUMN_CONVER_TIME, time);
+//            if (isNewMessageConversation) {
+//                cvConversation.put(COLUMN_CONVER_NEW_MESSAGES, 1);
+//            }
+//            db.insert(TABLE_CONVERSATIONS, null, cvConversation);
+//        } else {
+//            cvConversation.put(COLUMN_CONVER_LAST_MESSAGE, message);
+//            cvConversation.put(COLUMN_CONVER_TIME, time);
+//            if (isNewMessageConversation) {
+//                cvConversation.put(COLUMN_CONVER_NEW_MESSAGES, incrementNumNewMessageConversation(senderId));
+//            }
+//            db.update(TABLE_CONVERSATIONS, cvConversation, COLUMN_CONVER_SENDER_ID + "=" + senderId, null);
+//        }
+        return values;
+    }
+
+    public void updateConversations(String senderId, String senderUsername, String message, String dateTime, int numNewMessages){
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cvConversation = new ContentValues();
+
+        /* Insert a new conversation if it doesn't exist */
         if (!thereIsConversation(senderId)) {
             cvConversation.put(COLUMN_CONVER_SENDER_ID, senderId);
             cvConversation.put(COLUMN_CONVER_SENDER_USERNAME, senderUsername);
             cvConversation.put(COLUMN_CONVER_LAST_MESSAGE, message);
-            cvConversation.put(COLUMN_CONVER_TIME, time);
+            cvConversation.put(COLUMN_CONVER_TIME, dateTime);
+            cvConversation.put(COLUMN_CONVER_NEW_MESSAGES, numNewMessages);
             db.insert(TABLE_CONVERSATIONS, null, cvConversation);
         } else {
             cvConversation.put(COLUMN_CONVER_LAST_MESSAGE, message);
-            cvConversation.put(COLUMN_CONVER_TIME, time);
+            cvConversation.put(COLUMN_CONVER_TIME, dateTime);
+            if (numNewMessages > 0) {
+                cvConversation.put(COLUMN_CONVER_NEW_MESSAGES, getNumNewPreviousMessagesConver(senderId) + numNewMessages);
+            }
             db.update(TABLE_CONVERSATIONS, cvConversation, COLUMN_CONVER_SENDER_ID + "=" + senderId, null);
         }
+    }
 
-        return values;
+    private int getNumNewPreviousMessagesConver(String senderId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        int totalNewMessages = 0;
+
+        String sql = "SELECT " + COLUMN_CONVER_NEW_MESSAGES + " FROM " + TABLE_CONVERSATIONS + " WHERE " + COLUMN_CONVER_SENDER_ID + " = " + senderId + ";";
+        Cursor cursor = null;
+        if (db != null) {
+            cursor = db.rawQuery(sql, null);
+        }
+        if (cursor != null) {
+            cursor.moveToFirst();
+            totalNewMessages = cursor.getInt(cursor.getColumnIndex(COLUMN_CONVER_NEW_MESSAGES));
+            cursor.close();
+        }
+        return totalNewMessages + 1;
+    }
+
+    public void cleanNewMessagesConversation(String senderId){
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cvConversation = new ContentValues();
+
+        cvConversation.put(COLUMN_CONVER_NEW_MESSAGES, 0);
+        db.update(TABLE_CONVERSATIONS, cvConversation, COLUMN_CONVER_SENDER_ID + "=" + senderId, null);
     }
 
     /* Function that given a message id gets its data time */

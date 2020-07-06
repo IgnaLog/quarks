@@ -7,14 +7,16 @@ public class ConversationItem {
     private String userId;
     private String lastMessage;
     private String time;
+    private Integer numNewMessages;
 
-    public ConversationItem(String urlPhoto, String filename, String username, String userId, String lastMessage, String time) {
+    public ConversationItem(String urlPhoto, String filename, String username, String userId, String lastMessage, String time, Integer numNewMessages) {
         this.urlPhoto = urlPhoto;
         this.filename = filename;
         this.username = username;
         this.userId = userId;
         this.lastMessage = lastMessage;
         this.time = time;
+        this.numNewMessages = numNewMessages;
     }
 
     public String getUrlPhoto() {
@@ -63,5 +65,13 @@ public class ConversationItem {
 
     public void setTime(String time) {
         this.time = time;
+    }
+
+    public Integer geNumNewMessages() {
+        return numNewMessages;
+    }
+
+    public void setNumNewMessages(Integer numNewMessages) {
+        this.numNewMessages = numNewMessages;
     }
 }

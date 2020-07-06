@@ -24,13 +24,16 @@ import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.Functions;
 import com.quarks.android.Utils.Preferences;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 import io.socket.client.IO;
 import io.socket.client.Socket;
@@ -71,6 +74,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int TYPING_TIMER_LENGTH = 1500;
 
     private static final int PENDING = 1;
+
+    private Map<String, String> orderedDates = new HashMap<String, String>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -158,6 +163,55 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    /* We retrieve pending messages*/
+    private Emitter.Listener getPendingMessages = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONArray chats = (JSONArray) args[0];
+                    try {
+                        if (chats != null) {
+                            for (int i = 0; i < chats.length(); i++) {
+                                JSONObject jsonObjectChats = chats.getJSONObject(i);
+                                String senderId = jsonObjectChats.getString("sender_id");
+                                String senderUsername = jsonObjectChats.getString("sender_username");
+                                JSONArray messages = jsonObjectChats.getJSONArray("messages");
+                                if (messages.length() > 0) {
+                                    String lastMessage = "";
+                                    String lastDateTime = "";
+                                    for (int j = 0; j < messages.length(); j++) {
+                                        JSONObject jsonObjectMessages = messages.getJSONObject(j);
+                                        String message = jsonObjectMessages.getString("message");
+                                        String mongoTime = jsonObjectMessages.getString("time");
+                                        String time = Functions.formatMongoTime(mongoTime);
+                                        int channel = 2;
+
+                                        /* We save the message in the local database and collect the date and the message id to compose a new item */
+                                        values = dataBaseHelper.storeMessage(senderId, senderUsername, message, channel, time, PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
+                                        String dateTime = values.get("time"); // Comes from local database when saving the message
+
+                                        // To save data in the conversations table and then present the messages sorted by date
+                                        if(j == messages.length()){
+                                            lastMessage = message;
+                                            lastDateTime = dateTime;
+                                            orderMessages(senderId, dateTime);
+                                        }
+                                    }
+                                    // We updated the conversations table
+                                    dataBaseHelper.updateConversations(senderId, senderUsername, lastMessage, lastDateTime, messages.length());
+                                }
+                            }
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+    };
+
     /* We receive live messages */
     private Emitter.Listener listeningMessages = new Emitter.Listener() {
         @Override
@@ -182,31 +236,24 @@ public class MainActivity extends AppCompatActivity {
                     /* We save the message in the local database and collect the date and the message id to compose a new item */
                     values = dataBaseHelper.storeMessage(senderId, senderUsername, message, channel, "", PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
                     String dateTime = values.get("time"); // Comes from local database when saving the message
+                    // We updated the conversations table
+                    dataBaseHelper.updateConversations(senderId, senderUsername, message, dateTime, 1);
 
                     // ver si existe, insertar o Actualizar item y mover
-                    if (dataBaseHelper.thereIsConversation(senderId)) { // Actualizar y mover
-                        // Actualizar
-                        int position = adapter.indexOf(senderId);
-                        ConversationItem conversationItem = new ConversationItem(
-                                alConversations.get(position).getUrlPhoto(),
-                                alConversations.get(position).getFilename(),
-                                alConversations.get(position).getUsername(),
-                                alConversations.get(position).getUserId(),
-                                message,
-                                dateTime);
-                        if (position != -1) {
-                            alConversations.set(position, conversationItem);
-                            adapter.notifyItemChanged(position);
-                        }
-
-                        // Mover
+                    if (adapter.indexOf(senderId) != -1) { // Ya existe, actualizar y mover
                         int fromPosition = adapter.indexOf(senderId);
                         int toPosition = 1;
-
-                        ConversationItem item = alConversations.get(fromPosition);
+                        ConversationItem conversationItem = new ConversationItem(
+                                alConversations.get(fromPosition).getUrlPhoto(),
+                                alConversations.get(fromPosition).getFilename(),
+                                alConversations.get(fromPosition).getUsername(),
+                                alConversations.get(fromPosition).getUserId(),
+                                message,
+                                dateTime,
+                                alConversations.get(fromPosition).geNumNewMessages() + 1
+                        );
                         alConversations.remove(fromPosition);
-                        alConversations.add(toPosition, item);
-
+                        alConversations.add(toPosition, conversationItem);
                         adapter.notifyItemMoved(fromPosition, toPosition);
                     } else { // insertar
                         int insertIndex = 1;
@@ -218,7 +265,8 @@ public class MainActivity extends AppCompatActivity {
                                 c.getString(c.getColumnIndex("sender_username")),
                                 c.getString(c.getColumnIndex("sender_id")),
                                 c.getString(c.getColumnIndex("last_message")),
-                                c.getString(c.getColumnIndex("time"))
+                                c.getString(c.getColumnIndex("time")),
+                                c.getInt(c.getColumnIndex("new_messages"))
                         );
                         alConversations.add(insertIndex, conversationItem);
                         adapter.notifyItemInserted(insertIndex);
@@ -249,7 +297,9 @@ public class MainActivity extends AppCompatActivity {
                             alConversations.get(position).getUsername(),
                             alConversations.get(position).getUserId(),
                             getResources().getString(R.string.typing),
-                            alConversations.get(position).geTime());
+                            alConversations.get(position).geTime(),
+                            alConversations.get(position).geNumNewMessages()
+                    );
 
                     if (position != -1) {
                         alConversations.set(position, conversationItem);
@@ -281,7 +331,9 @@ public class MainActivity extends AppCompatActivity {
                             alConversations.get(position).getUsername(),
                             alConversations.get(position).getUserId(),
                             alConversations.get(position).getLastMessage(),
-                            alConversations.get(position).geTime());
+                            alConversations.get(position).geTime(),
+                            alConversations.get(position).geNumNewMessages()
+                    );
 
                     if (position != -1) {
                         alConversations.set(position, conversationItem);
@@ -321,7 +373,7 @@ public class MainActivity extends AppCompatActivity {
             socket.connect();
             socket.on("connected", connected);
 
-            socket.on("pending-messages", getPendingMessages);
+            socket.on("all-pending-messages", getPendingMessages);
             socket.on("send-message", listeningMessages);
 
             socket.on("typing", onTyping);
@@ -338,6 +390,19 @@ public class MainActivity extends AppCompatActivity {
      * FUNCTIONS
      **/
 
+    private void orderMessages(String senderId, String dateTime){
+        if(orderedDates.isEmpty()){
+            orderedDates.put(senderId, dateTime);
+        }
+        LinkedHashMap<String,String> ha = new LinkedHashMap<accessOrder>();
+
+        ConcurrentSkipListMap<String,String> has = new ConcurrentSkipListMap<>();
+        has.
+        if(){
+
+        }
+    }
+
     /* Function that loads the cursor data into the ArrayList */
     private void loadItems(Cursor c) {
         alConversations.add(new ConversationItem(
@@ -346,7 +411,8 @@ public class MainActivity extends AppCompatActivity {
                 c.getString(c.getColumnIndex("sender_username")),
                 c.getString(c.getColumnIndex("sender_id")),
                 c.getString(c.getColumnIndex("last_message")),
-                c.getString(c.getColumnIndex("time"))
+                c.getString(c.getColumnIndex("time")),
+                c.getInt(c.getColumnIndex("new_messages"))
         ));
     }
 
@@ -385,7 +451,8 @@ public class MainActivity extends AppCompatActivity {
                                     c.getString(c.getColumnIndex("sender_username")),
                                     c.getString(c.getColumnIndex("sender_id")),
                                     c.getString(c.getColumnIndex("last_message")),
-                                    c.getString(c.getColumnIndex("time"))
+                                    c.getString(c.getColumnIndex("time")),
+                                    c.getInt(c.getColumnIndex("new_messages"))
                             ));
                             c.moveToNext();
                             if (c.isLast()) {
@@ -407,7 +474,8 @@ public class MainActivity extends AppCompatActivity {
                                     c.getString(c.getColumnIndex("sender_username")),
                                     c.getString(c.getColumnIndex("sender_id")),
                                     c.getString(c.getColumnIndex("last_message")),
-                                    c.getString(c.getColumnIndex("time"))
+                                    c.getString(c.getColumnIndex("time")),
+                                    c.getInt(c.getColumnIndex("new_messages"))
                             ));
                             c.moveToNext();
                         }

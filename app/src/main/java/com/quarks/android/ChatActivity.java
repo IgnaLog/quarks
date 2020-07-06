@@ -385,11 +385,13 @@ public class ChatActivity extends AppCompatActivity {
                     try {
                         if (messages != null) {
                             int pendingMessages = 0;
+                            String lastTimeConversation = "";
+                            String lastMessageConversation = "";
                             for (int i = 0; i < messages.length(); i++) {
                                 JSONObject jsonObject = messages.getJSONObject(i);
                                 String message = jsonObject.getString("message");
                                 String mongoTime = jsonObject.getString("time");
-                                String time = formatMongoTime(mongoTime);
+                                String time = Functions.formatMongoTime(mongoTime);
                                 int channel = 2;
 
                                 /* We collect the number of pending messages to display in the textView of the first item.
@@ -413,11 +415,20 @@ public class ChatActivity extends AppCompatActivity {
                                 String dateTime = values.get("time"); // Comes from local database when saving the message
                                 addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages); // We add a new item to the adapter
 
+                                // We save data from the last message to use in the conversation activity
+                                if(i == messages.length()){
+                                    lastTimeConversation = dateTime;
+                                    lastMessageConversation = message;
+                                }
+
                                 // We save this item so we can make changes later. As long as there are no previous pending messages
                                 if (i == 0 && totalPending == 0) {
                                     recordItemWithPendingMessages(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages);
                                 }
                             }
+                            // We updated the conversations table to use it in the conversations activity
+                            dataBaseHelper.updateConversations(receiverId, receiverUsername, lastMessageConversation, lastTimeConversation, 0);
+
                             // We move the RecyclerView to the message with the pending messages mark, as long as there are no previous pending messages
                             if(totalPending == 0){
                                 linearLayoutManager.scrollToPositionWithOffset(adapter.getItemCount() - messages.length(), 280);
@@ -457,6 +468,11 @@ public class ChatActivity extends AppCompatActivity {
                     values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, "", NOT_PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
                     String id = values.get("id");
                     String dateTime = values.get("time"); // Comes from local database when saving the message
+
+                    // We updated the conversations table to use it in the conversations activity
+                    dataBaseHelper.updateConversations(receiverId, receiverUsername, message, dateTime, 0);
+
+                    // We add the message
                     addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), 0); // We add a new item to the adapter
 
                     // We add a new unread message
@@ -626,6 +642,9 @@ public class ChatActivity extends AppCompatActivity {
 
         /* Put the receiver's username in the title */
         tvUsername.setText(receiverUsername);
+
+        /* So that in the conversation activity the badge with the new messages appears with the value of zero */
+        dataBaseHelper.cleanNewMessagesConversation(receiverId);
     }
 
 
@@ -667,17 +686,6 @@ public class ChatActivity extends AppCompatActivity {
             previousHeightDiff = heightDiff;
         }
         return hasChanged;
-    }
-
-    public String formatMongoTime(String mongoTime) {
-        String[] parts = mongoTime.split("T");
-        String date = parts[0];
-        String time = parts[1];
-
-        String[] partsOfTime = time.split("\\.");
-        String realTime = partsOfTime[0];
-
-        return date + " " + realTime;
     }
 
     /* Function that loads the cursor data into the ArrayList */
@@ -805,11 +813,19 @@ public class ChatActivity extends AppCompatActivity {
             adapter.isLastItem();
         }
 
+        /* We save the message in the local database and collect the date and the message id to compose a new item */
         values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, channel, "", pending); // We store the message into the local data base and we obtain the id and time from the record stored
         String id = values.get("id");
         String dateTime = values.get("time");
+
+        // We updated the conversations table to use it in the conversations activity
+        dataBaseHelper.updateConversations(receiverId, receiverUsername, message, dateTime, 0);
+
+        // We add the message
         addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), 0); // Add message from the sender to the activity
-        JSONObject jsonObjectData = new JSONObject(); // We prepare a jsonObject to send the message to the server
+
+        // We prepare a jsonObject to send the message to the server
+        JSONObject jsonObjectData = new JSONObject();
         try {
             jsonObjectData.put("userId", receiverId); // Who is going to receive the message (receiver)
             jsonObjectData.put("username", receiverUsername);
