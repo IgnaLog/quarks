@@ -23,6 +23,7 @@ import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.Functions;
 import com.quarks.android.Utils.Preferences;
+import com.quarks.android.Utils.SocketHandler;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -31,16 +32,11 @@ import org.json.JSONObject;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentSkipListMap;
 
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
-
-import static com.quarks.android.Utils.Functions.formatDate;
-import static com.quarks.android.Utils.Functions.formatTime;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -95,6 +91,7 @@ public class MainActivity extends AppCompatActivity {
 
         userId = Preferences.getUserId(context);
         username = Preferences.getUserName(context);
+
 
         /** DESIGN **/
 
@@ -170,37 +167,49 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    JSONArray chats = (JSONArray) args[0];
+                    JSONObject pendingMessages = (JSONObject) args[0];
                     try {
-                        if (chats != null) {
-                            for (int i = 0; i < chats.length(); i++) {
-                                JSONObject jsonObjectChats = chats.getJSONObject(i);
-                                String senderId = jsonObjectChats.getString("sender_id");
-                                String senderUsername = jsonObjectChats.getString("sender_username");
-                                JSONArray messages = jsonObjectChats.getJSONArray("messages");
-                                if (messages.length() > 0) {
-                                    String lastMessage = "";
-                                    String lastDateTime = "";
-                                    for (int j = 0; j < messages.length(); j++) {
-                                        JSONObject jsonObjectMessages = messages.getJSONObject(j);
-                                        String message = jsonObjectMessages.getString("message");
-                                        String mongoTime = jsonObjectMessages.getString("time");
-                                        String time = Functions.formatMongoTime(mongoTime);
-                                        int channel = 2;
+                        JSONArray jsonArrayAllMessages = pendingMessages.getJSONArray("allMessages");
+                        JSONArray jsonArrayOrderedLastMessages = pendingMessages.getJSONArray("orderedLastMessages");
 
-                                        /* We save the message in the local database and collect the date and the message id to compose a new item */
-                                        values = dataBaseHelper.storeMessage(senderId, senderUsername, message, channel, time, PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
-                                        String dateTime = values.get("time"); // Comes from local database when saving the message
+                        if (jsonArrayAllMessages.length() > 0) {
+                            JSONArray chats = jsonArrayAllMessages.getJSONArray(0);
+                            if(chats.length() > 0){
+                                for (int i = 0; i < chats.length(); i++) {
+                                    JSONObject jsonObjectChats = chats.getJSONObject(i);
+                                    String senderId = jsonObjectChats.getString("sender_id");
+                                    String senderUsername = jsonObjectChats.getString("sender_username");
+                                    JSONArray messages = jsonObjectChats.getJSONArray("messages");
+                                    if (messages.length() > 0) {
+                                        for (int j = 0; j < messages.length(); j++) {
+                                            JSONObject jsonObjectMessages = messages.getJSONObject(j);
+                                            String message = jsonObjectMessages.getString("message");
+                                            String mongoTime = jsonObjectMessages.getString("time");
+                                            String time = Functions.formatMongoTime(mongoTime);
+                                            int channel = 2;
 
-                                        // To save data in the conversations table and then present the messages sorted by date
-                                        if(j == messages.length()){
-                                            lastMessage = message;
-                                            lastDateTime = dateTime;
-                                            orderMessages(senderId, dateTime);
+                                            /* We save the message in the local database and collect the date and the message id to compose a new item */
+                                            values = dataBaseHelper.storeMessage(senderId, senderUsername, message, channel, time, PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
                                         }
                                     }
+                                }
+                            }
+                        }
+                        if (jsonArrayOrderedLastMessages.length() > 0) {
+                            JSONArray chats = jsonArrayOrderedLastMessages.getJSONArray(0);
+                            if(chats.length() > 0){
+                                for (int i = 0; i < chats.length(); i++) {
+                                    JSONObject jsonObjectChats = chats.getJSONObject(i);
+                                    String senderId = jsonObjectChats.getString("sender_id");
+                                    String sender_username = jsonObjectChats.getString("sender_username");
+                                    int totalMessages = jsonObjectChats.getInt("total_messages");
+                                    String lastMessage = jsonObjectChats.getString("last_message");
+                                    String time = jsonObjectChats.getString("time");
+
                                     // We updated the conversations table
-                                    dataBaseHelper.updateConversations(senderId, senderUsername, lastMessage, lastDateTime, messages.length());
+                                    dataBaseHelper.updateConversations(senderId, sender_username, lastMessage, Functions.formatMongoTime(time), totalMessages);
+
+                                    reorganizeConversation(senderId, lastMessage, time, totalMessages, i);
                                 }
                             }
                         }
@@ -236,41 +245,11 @@ public class MainActivity extends AppCompatActivity {
                     /* We save the message in the local database and collect the date and the message id to compose a new item */
                     values = dataBaseHelper.storeMessage(senderId, senderUsername, message, channel, "", PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
                     String dateTime = values.get("time"); // Comes from local database when saving the message
+
                     // We updated the conversations table
                     dataBaseHelper.updateConversations(senderId, senderUsername, message, dateTime, 1);
 
-                    // ver si existe, insertar o Actualizar item y mover
-                    if (adapter.indexOf(senderId) != -1) { // Ya existe, actualizar y mover
-                        int fromPosition = adapter.indexOf(senderId);
-                        int toPosition = 1;
-                        ConversationItem conversationItem = new ConversationItem(
-                                alConversations.get(fromPosition).getUrlPhoto(),
-                                alConversations.get(fromPosition).getFilename(),
-                                alConversations.get(fromPosition).getUsername(),
-                                alConversations.get(fromPosition).getUserId(),
-                                message,
-                                dateTime,
-                                alConversations.get(fromPosition).geNumNewMessages() + 1
-                        );
-                        alConversations.remove(fromPosition);
-                        alConversations.add(toPosition, conversationItem);
-                        adapter.notifyItemMoved(fromPosition, toPosition);
-                    } else { // insertar
-                        int insertIndex = 1;
-                        Cursor c = dataBaseHelper.getConversation(senderId);
-                        c.moveToFirst();
-                        ConversationItem conversationItem = new ConversationItem(
-                                "",
-                                "",
-                                c.getString(c.getColumnIndex("sender_username")),
-                                c.getString(c.getColumnIndex("sender_id")),
-                                c.getString(c.getColumnIndex("last_message")),
-                                c.getString(c.getColumnIndex("time")),
-                                c.getInt(c.getColumnIndex("new_messages"))
-                        );
-                        alConversations.add(insertIndex, conversationItem);
-                        adapter.notifyItemInserted(insertIndex);
-                    }
+                    reorganizeConversation(senderId, message, dateTime, 1, 0);
                 }
             });
         }
@@ -290,21 +269,7 @@ public class MainActivity extends AppCompatActivity {
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
-                    int position = adapter.indexOf(senderId);
-                    ConversationItem conversationItem = new ConversationItem(
-                            alConversations.get(position).getUrlPhoto(),
-                            alConversations.get(position).getFilename(),
-                            alConversations.get(position).getUsername(),
-                            alConversations.get(position).getUserId(),
-                            getResources().getString(R.string.typing),
-                            alConversations.get(position).geTime(),
-                            alConversations.get(position).geNumNewMessages()
-                    );
-
-                    if (position != -1) {
-                        alConversations.set(position, conversationItem);
-                        adapter.notifyItemChanged(position);
-                    }
+                    conversationTyping(senderId, true);
                 }
             });
         }
@@ -324,21 +289,7 @@ public class MainActivity extends AppCompatActivity {
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
-                    int position = adapter.indexOf(senderId);
-                    ConversationItem conversationItem = new ConversationItem(
-                            alConversations.get(position).getUrlPhoto(),
-                            alConversations.get(position).getFilename(),
-                            alConversations.get(position).getUsername(),
-                            alConversations.get(position).getUserId(),
-                            alConversations.get(position).getLastMessage(),
-                            alConversations.get(position).geTime(),
-                            alConversations.get(position).geNumNewMessages()
-                    );
-
-                    if (position != -1) {
-                        alConversations.set(position, conversationItem);
-                        adapter.notifyItemChanged(position);
-                    }
+                    conversationTyping(senderId, false);
                 }
             });
         }
@@ -390,16 +341,59 @@ public class MainActivity extends AppCompatActivity {
      * FUNCTIONS
      **/
 
-    private void orderMessages(String senderId, String dateTime){
-        if(orderedDates.isEmpty()){
-            orderedDates.put(senderId, dateTime);
+    private void conversationTyping(String senderId, boolean typing) {
+        int position = adapter.indexOf(senderId);
+        if (position != -1) {
+            String message;
+            if (typing) {
+                message = getResources().getString(R.string.typing);
+            } else {
+                message = alConversations.get(position).getLastMessage();
+            }
+            ConversationItem conversationItem = new ConversationItem(
+                    alConversations.get(position).getUrlPhoto(),
+                    alConversations.get(position).getFilename(),
+                    alConversations.get(position).getUsername(),
+                    alConversations.get(position).getUserId(),
+                    message,
+                    alConversations.get(position).geTime(),
+                    alConversations.get(position).geNumNewMessages()
+            );
+            alConversations.set(position, conversationItem);
+            adapter.notifyItemChanged(position);
         }
-        LinkedHashMap<String,String> ha = new LinkedHashMap<accessOrder>();
+    }
 
-        ConcurrentSkipListMap<String,String> has = new ConcurrentSkipListMap<>();
-        has.
-        if(){
-
+    private void reorganizeConversation(String senderId, String lastMessage, String time, int totalMessages, int toPosition) {
+        // ver si existe, insertar o Actualizar item y mover
+        if (adapter.indexOf(senderId) != -1) { // Ya existe, actualizar y mover
+            int fromPosition = adapter.indexOf(senderId);
+            ConversationItem conversationItem = new ConversationItem(
+                    alConversations.get(fromPosition).getUrlPhoto(),
+                    alConversations.get(fromPosition).getFilename(),
+                    alConversations.get(fromPosition).getUsername(),
+                    alConversations.get(fromPosition).getUserId(),
+                    lastMessage,
+                    Functions.formatConversationDate(time, context),
+                    alConversations.get(fromPosition).geNumNewMessages() + totalMessages
+            );
+            alConversations.remove(fromPosition);
+            alConversations.add(toPosition, conversationItem);
+            adapter.notifyItemMoved(fromPosition, toPosition);
+        } else { // insertar
+            Cursor c = dataBaseHelper.getConversation(senderId);
+            c.moveToFirst();
+            ConversationItem conversationItem = new ConversationItem(
+                    "",
+                    "",
+                    c.getString(c.getColumnIndex("sender_username")),
+                    c.getString(c.getColumnIndex("sender_id")),
+                    c.getString(c.getColumnIndex("last_message")),
+                    c.getString(c.getColumnIndex("time")),
+                    c.getInt(c.getColumnIndex("new_messages"))
+            );
+            alConversations.add(toPosition, conversationItem);
+            adapter.notifyItemInserted(toPosition);
         }
     }
 

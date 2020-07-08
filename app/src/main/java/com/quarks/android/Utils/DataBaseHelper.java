@@ -74,7 +74,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     public Cursor getAllConversations() {
         SQLiteDatabase db = this.getReadableDatabase();
 
-        String sql = "SELECT * FROM " + TABLE_CONVERSATIONS + ";";
+        String sql = "SELECT * FROM " + TABLE_CONVERSATIONS + " ORDER BY " + COLUMN_CONVER_TIME + " DESC;";
         Cursor cursor = null;
         if (db != null) {
             cursor = db.rawQuery(sql, null);

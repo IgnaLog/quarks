@@ -27,7 +27,6 @@ public class QueueVolley {
         return requestQueue;
     }
 
-
     public <T> void RequestQueueAdd(Request<T> req) {
         getRequestQueue().add(req);
     }

@@ -2,6 +2,7 @@ package com.quarks.android.Adapters;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Parcelable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,17 +23,21 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.socket.client.Socket;
+
 import de.hdodenhof.circleimageview.CircleImageView;
 
 
 public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdapter.ViewHolder> {
     private ArrayList<ConversationItem> alConversations = new ArrayList<ConversationItem>();
     private Context mContext;
+    private Socket mSocket;
     private Map<String, Integer> mapSendersId = new HashMap<String, Integer>();
     private DataBaseHelper dataBaseHelper;
 
-    public ConversationsAdapter(Context context, ArrayList<ConversationItem> alConversations) {
+    public ConversationsAdapter(Context context,  Socket socket, ArrayList<ConversationItem> alConversations) {
         mContext = context;
+        mSocket = socket;
         dataBaseHelper = new DataBaseHelper(context);
         this.alConversations = alConversations;
         for(int i = 0; i < this.alConversations.size(); i++) {
@@ -72,14 +77,22 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
             holder.tvBadge.setVisibility(View.INVISIBLE);
         }
 
-
         holder.itemConversation.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(mContext, ChatActivity.class);
                 intent.putExtra("receiverId", userId);
                 intent.putExtra("receiverUsername", username);
+                intent.putExtra("socket", (Parcelable) mSocket);
                 holder.context.startActivity(intent);
+            }
+        });
+
+        holder.itemConversation.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+
+                return true;
             }
         });
     }
