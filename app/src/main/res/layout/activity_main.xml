@@ -7,9 +7,9 @@
     tools:context=".MainActivity">
 
     <LinearLayout
-        android:id="@+id/linearLayout"
+        android:id="@+id/lyToolbar"
         android:layout_width="match_parent"
-        android:layout_height="49dp"
+        android:layout_height="?actionBarSize"
         android:background="@color/bg_white"
         android:elevation="4dp"
         android:orientation="horizontal"
@@ -24,8 +24,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
-
+        app:layout_constraintTop_toBottomOf="@+id/lyToolbar" />
 
     <include
         android:id="@+id/lyCiruclarProgressBar"
@@ -36,9 +35,7 @@
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@+id/rvConversations"
-        app:layout_constraintStart_toStartOf="@+id/linearLayout">
-
-    </include>
+        app:layout_constraintStart_toStartOf="@+id/lyToolbar"/>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabContacts"

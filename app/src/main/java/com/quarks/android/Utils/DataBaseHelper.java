@@ -74,7 +74,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     public Cursor getAllConversations() {
         SQLiteDatabase db = this.getReadableDatabase();
 
-        String sql = "SELECT * FROM " + TABLE_CONVERSATIONS + " ORDER BY " + COLUMN_CONVER_TIME + " DESC;";
+        String sql = "SELECT * FROM " + TABLE_CONVERSATIONS + " ORDER BY datetime(" + COLUMN_CONVER_TIME + ") DESC;";
         Cursor cursor = null;
         if (db != null) {
             cursor = db.rawQuery(sql, null);
@@ -87,6 +87,18 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getReadableDatabase();
 
         String sql = "SELECT * FROM " + TABLE_CONVERSATIONS + "  WHERE " + COLUMN_CONVER_SENDER_ID + "= '" + senderId + "';";
+        Cursor cursor = null;
+        if (db != null) {
+            cursor = db.rawQuery(sql, null);
+        }
+        return cursor;
+    }
+
+    /* Function that gets the last message of a user conversation */
+    public Cursor getLastMessageConversation(String senderId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String sql = "SELECT " + COLUMN_CONVER_LAST_MESSAGE + " FROM " + TABLE_CONVERSATIONS + "  WHERE " + COLUMN_CONVER_SENDER_ID + "= '" + senderId + "';";
         Cursor cursor = null;
         if (db != null) {
             cursor = db.rawQuery(sql, null);
@@ -111,7 +123,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cvMessage = new ContentValues();
         cvMessage.put(COLUMN_PENDING, 0);
-        db.update(TABLE_MESSAGES, cvMessage, COLUMN_SENDER_ID + "=" + senderId + " AND " + COLUMN_PENDING + "=" + 1, null);
+        db.update(TABLE_MESSAGES, cvMessage, COLUMN_SENDER_ID + "='" + senderId + "' AND " + COLUMN_PENDING + "=" + 1, null);
     }
 
     /* Function that gets all the pending messages from a particular sender */
@@ -213,7 +225,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             if (numNewMessages > 0) {
                 cvConversation.put(COLUMN_CONVER_NEW_MESSAGES, getNumNewPreviousMessagesConver(senderId) + numNewMessages);
             }
-            db.update(TABLE_CONVERSATIONS, cvConversation, COLUMN_CONVER_SENDER_ID + "=" + senderId, null);
+            db.update(TABLE_CONVERSATIONS, cvConversation, COLUMN_CONVER_SENDER_ID + "='" + senderId + "'", null);
         }
     }
 
@@ -221,7 +233,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getReadableDatabase();
         int totalNewMessages = 0;
 
-        String sql = "SELECT " + COLUMN_CONVER_NEW_MESSAGES + " FROM " + TABLE_CONVERSATIONS + " WHERE " + COLUMN_CONVER_SENDER_ID + " = " + senderId + ";";
+        String sql = "SELECT " + COLUMN_CONVER_NEW_MESSAGES + " FROM " + TABLE_CONVERSATIONS + " WHERE " + COLUMN_CONVER_SENDER_ID + " = '" + senderId + "';";
         Cursor cursor = null;
         if (db != null) {
             cursor = db.rawQuery(sql, null);
@@ -231,15 +243,17 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             totalNewMessages = cursor.getInt(cursor.getColumnIndex(COLUMN_CONVER_NEW_MESSAGES));
             cursor.close();
         }
-        return totalNewMessages + 1;
+        return totalNewMessages;
     }
 
     public void cleanNewMessagesConversation(String senderId){
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cvConversation = new ContentValues();
 
-        cvConversation.put(COLUMN_CONVER_NEW_MESSAGES, 0);
-        db.update(TABLE_CONVERSATIONS, cvConversation, COLUMN_CONVER_SENDER_ID + "=" + senderId, null);
+        if(thereIsConversation(senderId)){
+            cvConversation.put(COLUMN_CONVER_NEW_MESSAGES, 0);
+            db.update(TABLE_CONVERSATIONS, cvConversation, COLUMN_CONVER_SENDER_ID + "='" + senderId + "'", null);
+        }
     }
 
     /* Function that given a message id gets its data time */

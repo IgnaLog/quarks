@@ -2,7 +2,6 @@ package com.quarks.android.Adapters;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.Parcelable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,34 +14,23 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.quarks.android.ChatActivity;
 import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.R;
-import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.Functions;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
-import io.socket.client.Socket;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
 
 public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdapter.ViewHolder> {
-    private ArrayList<ConversationItem> alConversations = new ArrayList<ConversationItem>();
+    private ArrayList<ConversationItem> alConversations;
     private Context mContext;
-    private Socket mSocket;
-    private Map<String, Integer> mapSendersId = new HashMap<String, Integer>();
-    private DataBaseHelper dataBaseHelper;
 
-    public ConversationsAdapter(Context context,  Socket socket, ArrayList<ConversationItem> alConversations) {
+    public ConversationsAdapter(Context context, ArrayList<ConversationItem> alConversations) {
         mContext = context;
-        mSocket = socket;
-        dataBaseHelper = new DataBaseHelper(context);
         this.alConversations = alConversations;
-        for(int i = 0; i < this.alConversations.size(); i++) {
-            mapSendersId.put(this.alConversations.get(i).getUserId(), i);
-        }
     }
 
     @NonNull
@@ -50,6 +38,35 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     public ConversationsAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_conversation, parent, false);
         return new ConversationsAdapter.ViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull final ConversationsAdapter.ViewHolder holder, int position, List<Object> payloads) {
+        if (payloads.isEmpty()) {
+            // Perform a full update
+            onBindViewHolder(holder, position);
+        } else {
+            // Perform a partial update
+            if (payloads.get(0) instanceof String) {
+                String lastMessage = (String) payloads.get(0);
+                holder.tvTypingAndLastMessage.setText(lastMessage);
+            }else if(payloads.get(0) instanceof ConversationItem){
+                ConversationItem conversationItem = (ConversationItem) payloads.get(0);
+                String lastMessage = conversationItem.getLastMessage();
+                String time = conversationItem.geTime();
+                int numNewMessages = conversationItem.geNumNewMessages();
+
+                holder.tvTypingAndLastMessage.setText(lastMessage);
+                holder.tvDate.setText(Functions.formatConversationDate(time,mContext));
+                if(numNewMessages > 0){
+                    holder.tvBadge.setText(String.valueOf(numNewMessages));
+                    holder.tvBadge.setVisibility(View.VISIBLE);
+                }else{
+                    holder.tvBadge.setText(String.valueOf(0));
+                    holder.tvBadge.setVisibility(View.INVISIBLE);
+                }
+            }
+        }
     }
 
     @Override
@@ -70,10 +87,15 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         holder.tvDate.setText(Functions.formatConversationDate(time, mContext));
 
         if(alConversations.get(position).geNumNewMessages() > 0){
-            holder.tvBadge.setText(alConversations.get(position).geNumNewMessages());
+            if(alConversations.get(position).geNumNewMessages() > 99){
+                String text = "+99";
+                holder.tvBadge.setText(text);
+            }else{
+                holder.tvBadge.setText(String.valueOf(alConversations.get(position).geNumNewMessages()));
+            }
             holder.tvBadge.setVisibility(View.VISIBLE);
         }else{
-            holder.tvBadge.setText(0);
+            holder.tvBadge.setText(String.valueOf(0));
             holder.tvBadge.setVisibility(View.INVISIBLE);
         }
 
@@ -83,7 +105,6 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
                 Intent intent = new Intent(mContext, ChatActivity.class);
                 intent.putExtra("receiverId", userId);
                 intent.putExtra("receiverUsername", username);
-                intent.putExtra("socket", (Parcelable) mSocket);
                 holder.context.startActivity(intent);
             }
         });
@@ -91,7 +112,6 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         holder.itemConversation.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-
                 return true;
             }
         });
@@ -122,11 +142,6 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
 
     public void Clear() {
         alConversations.clear();
-    }
-
-    public int indexOf(String senderId) {
-        Integer position = this.mapSendersId.get(senderId);
-        return position == null ? -1 : position;
     }
 
     public void removeAt(int position) {

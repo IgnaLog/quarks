@@ -4,10 +4,8 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Build;
 import android.service.notification.StatusBarNotification;
 
@@ -70,6 +68,7 @@ public class FCM extends FirebaseMessagingService {
 
             // We launch the timely notification
             sendMessageNotification(this, userId, username, message, mapMessages);
+
         }
     }
 
@@ -79,6 +78,7 @@ public class FCM extends FirebaseMessagingService {
         NotificationCompat.Action replyAction = createReplyAction(context);
         mapUserIds.put(username, userId); // we save the userId with its respective username
         storeMessage(username, message); // We store the messages of their respective username in our map mapMessages
+
 
         /*  For the first user to notify, we show an individual notification.
             We only create the group notification but it isn't shown because there is only one notification id.

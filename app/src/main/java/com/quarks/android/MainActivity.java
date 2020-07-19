@@ -23,7 +23,7 @@ import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.Functions;
 import com.quarks.android.Utils.Preferences;
-import com.quarks.android.Utils.SocketHandler;
+//import com.quarks.android.Utils.SocketHandler;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -32,6 +32,7 @@ import org.json.JSONObject;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import io.socket.client.IO;
@@ -71,7 +72,9 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int PENDING = 1;
 
-    private Map<String, String> orderedDates = new HashMap<String, String>();
+    private int co = 0;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,6 +94,18 @@ public class MainActivity extends AppCompatActivity {
 
         userId = Preferences.getUserId(context);
         username = Preferences.getUserName(context);
+
+        try {
+            socket = IO.socket(getResources().getString(R.string.url_chat));
+        } catch (URISyntaxException e) {
+            Log.d("Error", "Error socketURL: " + e.toString());
+        }
+        socket.connect();
+        socket.on("connected", connected);
+        socket.on("all-pending-messages", getPendingMessages);
+        socket.on("send-message", listeningMessages);
+        socket.on("typing", onTyping);
+        socket.on("stop-typing", onStopTyping);
 
 
         /** DESIGN **/
@@ -151,6 +166,7 @@ public class MainActivity extends AppCompatActivity {
                         // My user
                         jsonObjectData.put("userId", userId);
                         jsonObjectData.put("username", username);
+                        jsonObjectData.put("activity", "conversationsActivity");
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
@@ -167,54 +183,58 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    JSONObject pendingMessages = (JSONObject) args[0];
-                    try {
-                        JSONArray jsonArrayAllMessages = pendingMessages.getJSONArray("allMessages");
-                        JSONArray jsonArrayOrderedLastMessages = pendingMessages.getJSONArray("orderedLastMessages");
+                    JSONArray pendingMessages = (JSONArray) args[0];
+                    if(pendingMessages != null){
+                        try {
+                            JSONObject jsonObject = pendingMessages.getJSONObject(0);
+                            JSONArray jsonArrayAllMessages = jsonObject.getJSONArray("allMessages");
+                            JSONArray jsonArrayOrderedLastMessages = jsonObject.getJSONArray("orderedLastMessages");
+                            if (jsonArrayAllMessages.length() > 0) {
+                                JSONObject jsonObjectChats = jsonArrayAllMessages.getJSONObject(0);
+                                JSONArray chats = jsonObjectChats.getJSONArray("chats");
+                                if (chats.length() > 0) {
+                                    for (int i = 0; i < chats.length(); i++) {
+                                        JSONObject jsonObjectChat = chats.getJSONObject(i);
+                                        String senderId = jsonObjectChat.getString("sender_id");
+                                        String senderUsername = jsonObjectChat.getString("sender_username");
+                                        JSONArray messages = jsonObjectChat.getJSONArray("messages");
+                                        if (messages.length() > 0) {
+                                            for (int j = 0; j < messages.length(); j++) {
+                                                JSONObject jsonObjectMessages = messages.getJSONObject(j);
+                                                String message = jsonObjectMessages.getString("message");
+                                                String mongoTime = jsonObjectMessages.getString("time");
+                                                String time = Functions.formatMongoTime(mongoTime);
+                                                int channel = 2;
 
-                        if (jsonArrayAllMessages.length() > 0) {
-                            JSONArray chats = jsonArrayAllMessages.getJSONArray(0);
-                            if(chats.length() > 0){
-                                for (int i = 0; i < chats.length(); i++) {
-                                    JSONObject jsonObjectChats = chats.getJSONObject(i);
-                                    String senderId = jsonObjectChats.getString("sender_id");
-                                    String senderUsername = jsonObjectChats.getString("sender_username");
-                                    JSONArray messages = jsonObjectChats.getJSONArray("messages");
-                                    if (messages.length() > 0) {
-                                        for (int j = 0; j < messages.length(); j++) {
-                                            JSONObject jsonObjectMessages = messages.getJSONObject(j);
-                                            String message = jsonObjectMessages.getString("message");
-                                            String mongoTime = jsonObjectMessages.getString("time");
-                                            String time = Functions.formatMongoTime(mongoTime);
-                                            int channel = 2;
-
-                                            /* We save the message in the local database and collect the date and the message id to compose a new item */
-                                            values = dataBaseHelper.storeMessage(senderId, senderUsername, message, channel, time, PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
+                                                /* We save the message in the local database and collect the date and the message id to compose a new item */
+                                                values = dataBaseHelper.storeMessage(senderId, senderUsername, message, channel, time, PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
-                        if (jsonArrayOrderedLastMessages.length() > 0) {
-                            JSONArray chats = jsonArrayOrderedLastMessages.getJSONArray(0);
-                            if(chats.length() > 0){
-                                for (int i = 0; i < chats.length(); i++) {
-                                    JSONObject jsonObjectChats = chats.getJSONObject(i);
-                                    String senderId = jsonObjectChats.getString("sender_id");
-                                    String sender_username = jsonObjectChats.getString("sender_username");
-                                    int totalMessages = jsonObjectChats.getInt("total_messages");
-                                    String lastMessage = jsonObjectChats.getString("last_message");
-                                    String time = jsonObjectChats.getString("time");
+                            if (jsonArrayOrderedLastMessages.length() > 0) {
+                                JSONObject jsonObjectChat = jsonArrayOrderedLastMessages.getJSONObject(0);
+                                JSONArray chats = jsonObjectChat.getJSONArray("chats");
+                                if (chats.length() > 0) {
+                                    for (int i = 0; i < chats.length(); i++) {
+                                        JSONObject jsonObjectChats = chats.getJSONObject(i);
+                                        String senderId = jsonObjectChats.getString("sender_id");
+                                        String sender_username = jsonObjectChats.getString("sender_username");
+                                        int totalMessages = jsonObjectChats.getInt("total_messages");
+                                        String lastMessage = jsonObjectChats.getString("last_message");
+                                        String time = jsonObjectChats.getString("time");
 
-                                    // We updated the conversations table
-                                    dataBaseHelper.updateConversations(senderId, sender_username, lastMessage, Functions.formatMongoTime(time), totalMessages);
+                                        // We updated the conversations table
+                                        dataBaseHelper.updateConversations(senderId, sender_username, lastMessage, Functions.formatMongoTime(time), totalMessages);
 
-                                    reorganizeConversation(senderId, lastMessage, time, totalMessages, i);
+                                        reorganizeConversation(senderId, lastMessage, Functions.formatMongoTime(time), totalMessages, i);
+                                    }
                                 }
                             }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
                         }
-                    } catch (JSONException e) {
-                        e.printStackTrace();
                     }
                 }
             });
@@ -316,19 +336,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Volvemos a conectar el socket
         if (!socket.connected()) {
-            try {
-                socket = IO.socket(getResources().getString(R.string.url_chat));
-            } catch (URISyntaxException e) {
-                Log.d("Error", "Error socketURL: " + e.toString());
-            }
             socket.connect();
-            socket.on("connected", connected);
-
-            socket.on("all-pending-messages", getPendingMessages);
-            socket.on("send-message", listeningMessages);
-
-            socket.on("typing", onTyping);
-            socket.on("stop-typing", onStopTyping);
         }
     }
 
@@ -342,41 +350,36 @@ public class MainActivity extends AppCompatActivity {
      **/
 
     private void conversationTyping(String senderId, boolean typing) {
-        int position = adapter.indexOf(senderId);
+        int position = indexOf(senderId);
         if (position != -1) {
             String message;
             if (typing) {
                 message = getResources().getString(R.string.typing);
             } else {
-                message = alConversations.get(position).getLastMessage();
+                Cursor c = dataBaseHelper.getLastMessageConversation(senderId);
+                c.moveToFirst();
+                message = c.getString(c.getColumnIndex("last_message"));
             }
-            ConversationItem conversationItem = new ConversationItem(
-                    alConversations.get(position).getUrlPhoto(),
-                    alConversations.get(position).getFilename(),
-                    alConversations.get(position).getUsername(),
-                    alConversations.get(position).getUserId(),
-                    message,
-                    alConversations.get(position).geTime(),
-                    alConversations.get(position).geNumNewMessages()
-            );
-            alConversations.set(position, conversationItem);
-            adapter.notifyItemChanged(position);
+            adapter.notifyItemChanged(position, message);
         }
     }
 
     private void reorganizeConversation(String senderId, String lastMessage, String time, int totalMessages, int toPosition) {
         // ver si existe, insertar o Actualizar item y mover
-        if (adapter.indexOf(senderId) != -1) { // Ya existe, actualizar y mover
-            int fromPosition = adapter.indexOf(senderId);
+        if (indexOf(senderId) != -1) { // Ya existe, actualizar y mover
+            int fromPosition = indexOf(senderId);
             ConversationItem conversationItem = new ConversationItem(
                     alConversations.get(fromPosition).getUrlPhoto(),
                     alConversations.get(fromPosition).getFilename(),
                     alConversations.get(fromPosition).getUsername(),
                     alConversations.get(fromPosition).getUserId(),
                     lastMessage,
-                    Functions.formatConversationDate(time, context),
+                    time,
                     alConversations.get(fromPosition).geNumNewMessages() + totalMessages
             );
+            alConversations.set(fromPosition, conversationItem);
+            adapter.notifyItemChanged(fromPosition, conversationItem);
+
             alConversations.remove(fromPosition);
             alConversations.add(toPosition, conversationItem);
             adapter.notifyItemMoved(fromPosition, toPosition);
@@ -395,6 +398,15 @@ public class MainActivity extends AppCompatActivity {
             alConversations.add(toPosition, conversationItem);
             adapter.notifyItemInserted(toPosition);
         }
+    }
+
+    private int indexOf(String senderId){
+        for (int i = 0; i < alConversations.size(); i++) {
+            if(alConversations.get(i).getUserId().equals(senderId)){
+                return i;
+            }
+        }
+        return -1;
     }
 
     /* Function that loads the cursor data into the ArrayList */

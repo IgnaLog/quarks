@@ -7,7 +7,6 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -24,7 +23,8 @@
             android:exported="false">
         </receiver>
 
-        <service android:name=".Utils.JobServiceUnsentMessages"
+        <service
+            android:name=".Utils.JobServiceUnsentMessages"
             android:permission="android.permission.BIND_JOB_SERVICE">
         </service>
         <service
@@ -36,17 +36,6 @@
         </service>
 
         <activity
-            android:name=".ChatActivity"
-            android:windowSoftInputMode="stateHidden">
-
-        </activity>
-        <activity
-            android:name=".ContactsActivity"
-            android:noHistory="true">
-
-        </activity>
-        <activity android:name=".MainActivity"></activity>
-        <activity
             android:name=".Login.SplashActivity"
             android:noHistory="true">
             <intent-filter>
@@ -55,49 +44,63 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".Login.TokenActivity">
 
+        <activity
+            android:name=".ChatActivity"
+            android:windowSoftInputMode="stateHidden">
         </activity>
-        <activity android:name=".Login.StartActivity">
 
+        <activity
+            android:name=".ContactsActivity"
+            android:noHistory="true">
         </activity>
-        <activity android:name=".Login.PhotoAddedActivity">
 
-        </activity>
-        <activity android:name=".Login.PhotoActivity">
-
-        </activity>
-        <activity android:name=".Login.WelcomeActivity">
-
-        </activity>
         <activity
             android:name=".Login.NoUsernameActivity"
             android:windowSoftInputMode="stateHidden|adjustResize">
-
         </activity>
+
         <activity
             android:name=".Login.SignInActivity"
             android:windowSoftInputMode="stateHidden|adjustResize">
-
         </activity>
+
         <activity
             android:name=".Login.LoginActivity"
             android:windowSoftInputMode="stateHidden|adjustResize">
-
         </activity>
+
         <activity android:name=".Login.LoginHelpActivity">
-
         </activity>
+
         <activity
             android:name=".Login.UsernameActivity"
             android:windowSoftInputMode="stateHidden|adjustResize">
-
         </activity>
+
         <activity
             android:name=".Login.NamePassActivity"
             android:windowSoftInputMode="stateHidden|adjustResize">
-
         </activity>
+
+        <activity android:name=".MainActivity" >
+        </activity>
+
+        <activity android:name=".Login.TokenActivity">
+        </activity>
+
+        <activity android:name=".Login.StartActivity">
+        </activity>
+
+        <activity android:name=".Login.PhotoAddedActivity">
+        </activity>
+
+        <activity android:name=".Login.PhotoActivity">
+        </activity>
+
+        <activity android:name=".Login.WelcomeActivity">
+        </activity>
+
     </application>
 
 </manifest>

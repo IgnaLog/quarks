@@ -55,6 +55,8 @@ import static com.quarks.android.Utils.Functions.formatTime;
 
 public class ChatActivity extends AppCompatActivity {
 
+    public static boolean isChatActivity = false;
+
     private RelativeLayout rootView;
     private LoadingWheel loadingWheel;
     private LinearLayout lyProfileBack;
@@ -123,12 +125,16 @@ public class ChatActivity extends AppCompatActivity {
 
         /**  SOCKETS CONNECTIONS  **/
 
+        //  socket = SocketHandler.getSocket();
+
         try {
             socket = IO.socket(getResources().getString(R.string.url_chat));
         } catch (URISyntaxException e) {
             Log.d("Error", "Error socketURL: " + e.toString());
         }
         socket.connect();
+        //   SocketHandler.setSocket(socket);
+
         socket.on("connected", connected);
         socket.on("pending-messages", getPendingMessages);
         socket.on("send-message", listeningMessages);
@@ -365,6 +371,7 @@ public class ChatActivity extends AppCompatActivity {
                         jsonObjectData.put("username", username);
                         // The person with whom I communicate, this is util for receive pending messages in the server.
                         jsonObjectData.put("receiverId", receiverId);
+                        jsonObjectData.put("activity", "conversationsActivity");
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
@@ -397,9 +404,9 @@ public class ChatActivity extends AppCompatActivity {
                                 /* We collect the number of pending messages to display in the textView of the first item.
                                 If there are previous pending messages, we only update the corresponding item */
                                 if (i == 0) {
-                                    if(totalPending > 0){
+                                    if (totalPending > 0) {
                                         updateItemWithPendingMessages(messages.length());
-                                    }else{
+                                    } else {
                                         pendingMessages = messages.length();
                                     }
                                 }
@@ -416,7 +423,7 @@ public class ChatActivity extends AppCompatActivity {
                                 addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages); // We add a new item to the adapter
 
                                 // We save data from the last message to use in the conversation activity
-                                if(i == messages.length()){
+                                if (i == messages.length()) {
                                     lastTimeConversation = dateTime;
                                     lastMessageConversation = message;
                                 }
@@ -430,7 +437,7 @@ public class ChatActivity extends AppCompatActivity {
                             dataBaseHelper.updateConversations(receiverId, receiverUsername, lastMessageConversation, lastTimeConversation, 0);
 
                             // We move the RecyclerView to the message with the pending messages mark, as long as there are no previous pending messages
-                            if(totalPending == 0){
+                            if (totalPending == 0) {
                                 linearLayoutManager.scrollToPositionWithOffset(adapter.getItemCount() - messages.length(), 280);
                             }
                         }
@@ -534,21 +541,31 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        isChatActivity = true;
         tvTyping.setVisibility(View.GONE);
 
         if (!socket.connected()) {
-            try {
-                socket = IO.socket(getResources().getString(R.string.url_chat));
-            } catch (URISyntaxException e) {
-                Log.d("Error", "Error socketURL: " + e.toString());
-            }
+            //     Socket mSocket = SocketHandler.getSocket();
+            //   if (mSocket != null) {
+            //      socket = mSocket;
+            // } else {
+//            try {
+//                socket = IO.socket(getResources().getString(R.string.url_chat));
+//            } catch (URISyntaxException e) {
+//                Log.d("Error", "Error socketURL: " + e.toString());
+//            }
             socket.connect();
-            socket.on("connected", connected);
-            socket.on("pending-messages", getPendingMessages);
-            socket.on("send-message", listeningMessages);
-            socket.on("typing", onTyping);
-            socket.on("stop-typing", onStopTyping);
+//            String id = socket.id();
+//            System.out.println(id);
+            //   SocketHandler.setSocket(socket);
+            //   }
         }
+        socket.on("connected", connected);
+        socket.on("pending-messages", getPendingMessages);
+        socket.on("send-message", listeningMessages);
+        socket.on("typing", onTyping);
+        socket.on("stop-typing", onStopTyping);
+
 
         /* Notification management. Remove the corresponding notification and update the group notification */
         if (FCM.numNotificationsActive(context) > 0) {
@@ -579,6 +596,8 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        isChatActivity = false;
+
         // Disconnect the sockets so that the server send a notification for new messages
         socket.emit("disconnect", "");
         socket.disconnect();
@@ -750,7 +769,7 @@ public class ChatActivity extends AppCompatActivity {
             if (totalPending > 0) {
                 // We move the RecyclerView to the message of pending messages
                 linearLayoutManager.scrollToPositionWithOffset(adapter.getItemCount() - totalPending, 280);
-                dataBaseHelper.updatePendingMessages(receiverId); // We leave the pending messages with the value of zero to mark them as read
+                dataBaseHelper.updatePendingMessages(receiverId); // We leave the pending messages in te local data base with the value of zero to mark them as read
             } else {
                 rvChat.scrollToPosition(adapter.getItemCount() - 1);
             }
