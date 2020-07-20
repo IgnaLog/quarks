@@ -371,7 +371,7 @@ public class ChatActivity extends AppCompatActivity {
                         jsonObjectData.put("username", username);
                         // The person with whom I communicate, this is util for receive pending messages in the server.
                         jsonObjectData.put("receiverId", receiverId);
-                        jsonObjectData.put("activity", "conversationsActivity");
+                        jsonObjectData.put("activity", "chatActivity");
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
@@ -423,7 +423,7 @@ public class ChatActivity extends AppCompatActivity {
                                 addMessage(id, message, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages); // We add a new item to the adapter
 
                                 // We save data from the last message to use in the conversation activity
-                                if (i == messages.length()) {
+                                if (i == messages.length() - 1) {
                                     lastTimeConversation = dateTime;
                                     lastMessageConversation = message;
                                 }
@@ -545,27 +545,8 @@ public class ChatActivity extends AppCompatActivity {
         tvTyping.setVisibility(View.GONE);
 
         if (!socket.connected()) {
-            //     Socket mSocket = SocketHandler.getSocket();
-            //   if (mSocket != null) {
-            //      socket = mSocket;
-            // } else {
-//            try {
-//                socket = IO.socket(getResources().getString(R.string.url_chat));
-//            } catch (URISyntaxException e) {
-//                Log.d("Error", "Error socketURL: " + e.toString());
-//            }
             socket.connect();
-//            String id = socket.id();
-//            System.out.println(id);
-            //   SocketHandler.setSocket(socket);
-            //   }
         }
-        socket.on("connected", connected);
-        socket.on("pending-messages", getPendingMessages);
-        socket.on("send-message", listeningMessages);
-        socket.on("typing", onTyping);
-        socket.on("stop-typing", onStopTyping);
-
 
         /* Notification management. Remove the corresponding notification and update the group notification */
         if (FCM.numNotificationsActive(context) > 0) {
@@ -659,6 +640,12 @@ public class ChatActivity extends AppCompatActivity {
         receiverId = getIntent().getStringExtra("receiverId");
         receiverUsername = getIntent().getStringExtra("receiverUsername"); // We capture the username and id of the previous activity
 
+//        userId = "5f0f33c1966d941750ac19ef";
+//        username = "andrea";
+//        receiverId = "5f0845e61407d92ab09b4240";
+//        receiverUsername = "nacho";
+
+
         /* Put the receiver's username in the title */
         tvUsername.setText(receiverUsername);
 
@@ -726,7 +713,7 @@ public class ChatActivity extends AppCompatActivity {
                     c.getString(c.getColumnIndex("message")),
                     c.getInt(c.getColumnIndex("channel")),
                     Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
-                    Functions.formatTime(c.getString(c.getColumnIndex("time")), context),
+                    Functions.formatDate(c.getString(c.getColumnIndex("time")), context),
                     totalPending);
         } else {
             alMessage.add(new MessageItem(
@@ -773,7 +760,6 @@ public class ChatActivity extends AppCompatActivity {
             } else {
                 rvChat.scrollToPosition(adapter.getItemCount() - 1);
             }
-
         } else {
             loadingWheel.setLoading(true); // We show a wheel loading
             new Handler().postDelayed(new Runnable() {
