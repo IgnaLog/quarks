@@ -9,7 +9,12 @@ import android.util.Log;
 
 import com.quarks.android.R;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
 
 import io.socket.client.IO;
 import io.socket.client.Socket;
@@ -18,14 +23,22 @@ import io.socket.emitter.Emitter;
 public class DirectReplyReceiver extends BroadcastReceiver {
 
     private Socket socket;
+    private CharSequence replyText;
+    private String receiverId, receiverUsername, userId, username;
+    private Map<String, String> values = new HashMap<String, String>();
+    private DataBaseHelper dataBaseHelper;
 
     @Override
     public void onReceive(Context context, Intent intent) {
         Bundle remoteInput = RemoteInput.getResultsFromIntent(intent);
+        dataBaseHelper = new DataBaseHelper(context);
 
         if (remoteInput != null) {
-            CharSequence replyText = remoteInput.getCharSequence("key_text_reply");
-
+            replyText = remoteInput.getCharSequence("key_text_reply");
+            receiverId = remoteInput.getString("receiverId");
+            receiverUsername = remoteInput.getString("receiverUsername");
+            userId = remoteInput.getString("userId");
+            username = remoteInput.getString("username");
 
             try {
                 socket = IO.socket(context.getResources().getString(R.string.url_chat));
@@ -34,30 +47,36 @@ public class DirectReplyReceiver extends BroadcastReceiver {
             }
             socket.connect();
             socket.on("connected", connected);
-
-//            socket.emit("disconnect", "");
-//            socket.disconnect();
         }
     }
 
-    /* We have been connected, so we send our user data */
+    /* We have been connected, so we send the reply text */
     private Emitter.Listener connected = new Emitter.Listener() {
         @Override
         public void call(final Object... args) {
+            JSONObject jsonObjectData = new JSONObject();
+            try {
+                jsonObjectData.put("userId", receiverId); // Who is going to receive the message (receiver)
+                jsonObjectData.put("username", receiverUsername);
+                jsonObjectData.put("senderId", userId); // Who send the message (sender)
+                jsonObjectData.put("senderUsername", username);
+                jsonObjectData.put("content", replyText); // The message
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
 
-            //  JSONObject data = (JSONObject) args[0];
-            System.out.println("holaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-           // JSONObject jsonObjectData = new JSONObject();
-//                    try {
-//                        // My user
-////                        jsonObjectData.put("userId", userId);
-////                        jsonObjectData.put("username", username);
-////                        // The person with whom I communicate, this is util for receive pending messages in the server.
-////                        jsonObjectData.put("receiverId", receiverId);
-//                    } catch (JSONException e) {
-//                        e.printStackTrace();
-//                    }
-         //   socket.emit("add-user", jsonObjectData);
+            socket.emit("direct-reply-message", jsonObjectData);
+
+            /* We save the message in the local database and collect the date to compose the conversations */
+            values = dataBaseHelper.storeMessage(receiverId, receiverUsername, String.valueOf(replyText), 1, "", 0); // We store the message into the local data base and we obtain the id and time from the record stored
+            String dateTime = values.get("time");
+
+            // We updated the conversations table to use it in the conversations activity
+            dataBaseHelper.updateConversations(receiverId, receiverUsername, String.valueOf(replyText), dateTime, 0);
+
+
+            socket.emit("disconnect", "");
+            socket.disconnect();
         }
     };
 }

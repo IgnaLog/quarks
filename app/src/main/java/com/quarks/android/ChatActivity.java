@@ -8,7 +8,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.Editable;
@@ -75,7 +74,6 @@ public class ChatActivity extends AppCompatActivity {
     private Context context = ChatActivity.this;
     private String userId = "", username = "", receiverId = "", receiverUsername = "";
 
-    private SQLiteDatabase db;
     private DataBaseHelper dataBaseHelper = new DataBaseHelper(context);
     private Cursor cursor;
 
@@ -667,12 +665,6 @@ public class ChatActivity extends AppCompatActivity {
         username = Preferences.getUserName(context);
         receiverId = getIntent().getStringExtra("receiverId");
         receiverUsername = getIntent().getStringExtra("receiverUsername"); // We capture the username and id of the previous activity
-
-//        userId = "5f0f33c1966d941750ac19ef";
-//        username = "andrea";
-//        receiverId = "5f0845e61407d92ab09b4240";
-//        receiverUsername = "nacho";
-
 
         /* Put the receiver's username in the title */
         tvUsername.setText(receiverUsername);

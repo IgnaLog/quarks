@@ -17,10 +17,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.quarks.android.Items.MessageItem;
 import com.quarks.android.R;
-import com.quarks.android.Utils.Functions;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.MessagesViewHolder> {
 

@@ -15,14 +15,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.quarks.android.ChatActivity;
 import com.quarks.android.Interfaces.InterfaceClickConversation;
 import com.quarks.android.Items.ConversationItem;
-import com.quarks.android.MainActivity;
 import com.quarks.android.R;
 import com.quarks.android.Utils.Functions;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
-
 
 import de.hdodenhof.circleimageview.CircleImageView;
 

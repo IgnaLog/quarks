@@ -75,7 +75,7 @@ public class FCM extends FirebaseMessagingService {
     public void sendMessageNotification(Context context, String userId, String username, String message, Map<String, List<Message>> mapMessages) {
         notificationManager = NotificationManagerCompat.from(context); // Create notification manager
         createChannels();
-        NotificationCompat.Action replyAction = createReplyAction(context);
+        NotificationCompat.Action replyAction = createReplyAction(context, userId, username);
         mapUserIds.put(username, userId); // we save the userId with its respective username
         storeMessage(username, message); // We store the messages of their respective username in our map mapMessages
 
@@ -146,15 +146,15 @@ public class FCM extends FirebaseMessagingService {
     public static void updateMessageNotification(Context context, Map<String, List<Message>> mapMessages) {
         notificationManager = NotificationManagerCompat.from(context); // Create notification manager
         createChannels();
-        NotificationCompat.Action replyAction = createReplyAction(context);
 
         if (anyNotificationNotActive(context)) {
             for (Map.Entry<String, List<Message>> entry : mapMessages.entrySet()) {
                 String user = entry.getKey();
                 int id = getNotificationId(user);
                 if (isNotificationActive(id, context)) {
-                    NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
                     String serverUserId = mapUserIds.get(user);
+                    NotificationCompat.Action replyAction = createReplyAction(context, user, serverUserId);
+                    NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
                     launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, replyAction, PRIORITY_LOW, serverUserId, user);
                     launchSummaryNotification(context, CHANNEL_ID_LOW, PRIORITY_LOW, user);
                 }
@@ -162,8 +162,9 @@ public class FCM extends FirebaseMessagingService {
         } else { // If all notifications are active, we load all messages
             for (Map.Entry<String, List<Message>> entry : mapMessages.entrySet()) {
                 String user = entry.getKey();
-                NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
                 String serverUserId = mapUserIds.get(user);
+                NotificationCompat.MessagingStyle messagingStyle = createMessagingStyle(user);
+                NotificationCompat.Action replyAction = createReplyAction(context, user, serverUserId);
                 launchSimpleNotification(context, CHANNEL_ID_LOW, messagingStyle, replyAction, PRIORITY_LOW, serverUserId, user);
                 launchSummaryNotification(context, CHANNEL_ID_LOW, PRIORITY_LOW, user);
             }
@@ -222,18 +223,19 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /*  we add a response mode */
-    private static NotificationCompat.Action createReplyAction(Context context) {
+    private static NotificationCompat.Action createReplyAction(Context context, String receiverId, String receiverUsername) {
         int requestID = (int) System.currentTimeMillis();
         RemoteInput remoteInput = new RemoteInput.Builder("key_text_reply").setLabel(context.getResources().getString(R.string.answer)).build();
-        Intent replyIntent;
-        PendingIntent replyPendingIntent;
+        Intent replyIntent = new Intent(context, DirectReplyReceiver.class);
 
-        replyIntent = new Intent(context, DirectReplyReceiver.class);
-        replyPendingIntent = PendingIntent.getBroadcast(context, requestID, replyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        replyIntent.putExtra("receiverId", receiverId);
+        replyIntent.putExtra("receiverUsername", receiverUsername);
+        replyIntent.putExtra("userId", Preferences.getUserId(context));
+        replyIntent.putExtra("username", Preferences.getUserName(context));
 
-        return new NotificationCompat.Action.Builder(R.drawable.ic_reply, context.getResources().getString(R.string.reply), replyPendingIntent)
-                .addRemoteInput(remoteInput)
-                .build();
+        PendingIntent replyPendingIntent = PendingIntent.getBroadcast(context, requestID, replyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        return new NotificationCompat.Action.Builder(R.drawable.ic_reply, context.getResources().getString(R.string.reply), replyPendingIntent).addRemoteInput(remoteInput).build();
     }
 
     /* For each user we keep a List of all the messages that that are entering inside a key value map. If a new user arrives, we create a new key-value */

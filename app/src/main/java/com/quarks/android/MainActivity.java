@@ -26,7 +26,6 @@ import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.Functions;
 import com.quarks.android.Utils.Preferences;
 import com.quarks.android.Utils.SocketHandler;
-//import com.quarks.android.Utils.SocketHandler;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -35,12 +34,13 @@ import org.json.JSONObject;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
+
+//import com.quarks.android.Utils.SocketHandler;
 
 public class MainActivity extends AppCompatActivity implements InterfaceClickConversation {
 
