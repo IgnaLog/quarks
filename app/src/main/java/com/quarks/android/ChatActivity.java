@@ -4,7 +4,9 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
@@ -36,6 +38,7 @@ import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.FCM;
 import com.quarks.android.Utils.Functions;
 import com.quarks.android.Utils.Preferences;
+import com.quarks.android.Utils.SocketHandler;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -107,6 +110,8 @@ public class ChatActivity extends AppCompatActivity {
     private static final int NOT_PENDING = 0;
     private boolean firstPendingMessage = true;
 
+    public boolean isBackPressed = false;
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -125,21 +130,30 @@ public class ChatActivity extends AppCompatActivity {
 
         /**  SOCKETS CONNECTIONS  **/
 
-        //  socket = SocketHandler.getSocket();
-
-        try {
-            socket = IO.socket(getResources().getString(R.string.url_chat));
-        } catch (URISyntaxException e) {
-            Log.d("Error", "Error socketURL: " + e.toString());
+        if (SocketHandler.getSocket() == null) {
+            try {
+                socket = IO.socket(getResources().getString(R.string.url_chat));
+            } catch (URISyntaxException e) {
+                Log.d("Error", "Error socketURL: " + e.toString());
+            }
+            socket.connect();
+            socket.on("connected", connected);
+            socket.on("all-pending-messages", getPendingMessages);
+            socket.on("pending-messages", getPendingMessages);
+            socket.on("send-message", listeningMessages);
+            socket.on("typing", onTyping);
+            socket.on("stop-typing", onStopTyping);
+            SocketHandler.setSocket(socket);
+        } else {
+            socket = SocketHandler.getSocket();
+            socket.off();
+            socket.on("connected", connected);
+            socket.on("all-pending-messages", getPendingMessages);
+            socket.on("pending-messages", getPendingMessages);
+            socket.on("send-message", listeningMessages);
+            socket.on("typing", onTyping);
+            socket.on("stop-typing", onStopTyping);
         }
-        socket.connect();
-        //   SocketHandler.setSocket(socket);
-
-        socket.on("connected", connected);
-        socket.on("pending-messages", getPendingMessages);
-        socket.on("send-message", listeningMessages);
-        socket.on("typing", onTyping);
-        socket.on("stop-typing", onStopTyping);
 
         /**  LISTENERS  **/
 
@@ -348,6 +362,9 @@ public class ChatActivity extends AppCompatActivity {
         lyProfileBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                isBackPressed = true;
+                Intent returnIntent = new Intent();
+                setResult(Activity.RESULT_CANCELED, returnIntent);
                 finish();
             }
         });
@@ -528,7 +545,6 @@ public class ChatActivity extends AppCompatActivity {
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-
             typing = false;
             socket.emit("stop-typing", jsonObjectData);
         }
@@ -545,7 +561,9 @@ public class ChatActivity extends AppCompatActivity {
         tvTyping.setVisibility(View.GONE);
 
         if (!socket.connected()) {
+            SocketHandler.cleanSocket();
             socket.connect();
+            SocketHandler.setSocket(socket);
         }
 
         /* Notification management. Remove the corresponding notification and update the group notification */
@@ -580,8 +598,10 @@ public class ChatActivity extends AppCompatActivity {
         isChatActivity = false;
 
         // Disconnect the sockets so that the server send a notification for new messages
-        socket.emit("disconnect", "");
-        socket.disconnect();
+        if (!isBackPressed) {
+            socket.emit("disconnect", "");
+            socket.disconnect();
+        }
 
         // We remove the textView in the item that contains the number of unread messages
         cleanItemWithPendingMessages();
@@ -590,8 +610,16 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        socket.emit("disconnect", "");
-        socket.disconnect();
+        if (!isBackPressed) {
+            socket.emit("disconnect", "");
+            socket.disconnect();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        isBackPressed = true;
+        finish();
     }
 
     /**

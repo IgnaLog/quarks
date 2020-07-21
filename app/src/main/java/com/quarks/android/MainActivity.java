@@ -1,5 +1,6 @@
 package com.quarks.android;
 
+import android.app.Activity;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
@@ -19,10 +20,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.quarks.android.Adapters.ConversationsAdapter;
 import com.quarks.android.CustomViews.LoadingWheel;
+import com.quarks.android.Interfaces.InterfaceClickConversation;
 import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.Functions;
 import com.quarks.android.Utils.Preferences;
+import com.quarks.android.Utils.SocketHandler;
 //import com.quarks.android.Utils.SocketHandler;
 
 import org.json.JSONArray;
@@ -39,7 +42,7 @@ import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements InterfaceClickConversation {
 
     private FloatingActionButton fabContacts;
     private RecyclerView rvConversations;
@@ -57,8 +60,8 @@ public class MainActivity extends AppCompatActivity {
     private DataBaseHelper dataBaseHelper;
     private Cursor cursor;
 
-    private Boolean isScrolling = false;
-    private Boolean noMoreScrolling = false;
+    private boolean isScrolling = false;
+    private boolean noMoreScrolling = false;
     private LinearLayoutManager linearLayoutManager;
     private int currentItems, totalItems, scrollOutItems, totalCursor;
     private static int limitItemsToScroll = 50;  // Limit number to start loading batch messages
@@ -66,15 +69,10 @@ public class MainActivity extends AppCompatActivity {
     private static int nextItemsToShow = 100; // Number of messages to display each time there is a new load
     private static int indexItems = 0; // Indicator to know where we are in the message cursor of the local database
 
-    private boolean typing = false;
-    private Handler typingHandler = new Handler();
-    private static final int TYPING_TIMER_LENGTH = 1500;
-
     private static final int PENDING = 1;
 
-    private int co = 0;
-
-
+    private static final int LAUNCH_SECOND_ACTIVITY = 1;
+    private boolean isOnPauseFromConversationClick = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,18 +93,32 @@ public class MainActivity extends AppCompatActivity {
         userId = Preferences.getUserId(context);
         username = Preferences.getUserName(context);
 
-        try {
-            socket = IO.socket(getResources().getString(R.string.url_chat));
-        } catch (URISyntaxException e) {
-            Log.d("Error", "Error socketURL: " + e.toString());
-        }
-        socket.connect();
-        socket.on("connected", connected);
-        socket.on("all-pending-messages", getPendingMessages);
-        socket.on("send-message", listeningMessages);
-        socket.on("typing", onTyping);
-        socket.on("stop-typing", onStopTyping);
+        /**  SOCKETS CONNECTIONS  **/
 
+        if (SocketHandler.getSocket() == null) {
+            try {
+                socket = IO.socket(getResources().getString(R.string.url_chat));
+            } catch (URISyntaxException e) {
+                Log.d("Error", "Error socketURL: " + e.toString());
+            }
+            socket.connect();
+            socket.on("connected", connected);
+            socket.on("all-pending-messages", getPendingMessages);
+            socket.on("pending-messages", getPendingMessages);
+            socket.on("send-message", listeningMessages);
+            socket.on("typing", onTyping);
+            socket.on("stop-typing", onStopTyping);
+            SocketHandler.setSocket(socket);
+        } else {
+            socket = SocketHandler.getSocket();
+            socket.off();
+            socket.on("connected", connected);
+            socket.on("all-pending-messages", getPendingMessages);
+            socket.on("pending-messages", getPendingMessages);
+            socket.on("send-message", listeningMessages);
+            socket.on("typing", onTyping);
+            socket.on("stop-typing", onStopTyping);
+        }
 
         /** DESIGN **/
 
@@ -184,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     JSONArray pendingMessages = (JSONArray) args[0];
-                    if(pendingMessages != null){
+                    if (pendingMessages != null) {
                         try {
                             JSONObject jsonObject = pendingMessages.getJSONObject(0);
                             JSONArray jsonArrayAllMessages = jsonObject.getJSONArray("allMessages");
@@ -320,8 +332,27 @@ public class MainActivity extends AppCompatActivity {
      **/
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == LAUNCH_SECOND_ACTIVITY) {
+            if (resultCode == Activity.RESULT_CANCELED) {
+                socket = SocketHandler.getSocket();
+                socket.off();
+                socket.on("connected", connected);
+                socket.on("all-pending-messages", getPendingMessages);
+                socket.on("pending-messages", getPendingMessages);
+                socket.on("send-message", listeningMessages);
+                socket.on("typing", onTyping);
+                socket.on("stop-typing", onStopTyping);
+            }
+        }
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
+        isOnPauseFromConversationClick = false;
+
         if (adapter != null) {
             adapter.Clear();
         }
@@ -334,9 +365,28 @@ public class MainActivity extends AppCompatActivity {
             notificationManager.cancelAll();
         }
 
-        // Volvemos a conectar el socket
         if (!socket.connected()) {
+            SocketHandler.cleanSocket();
             socket.connect();
+            SocketHandler.setSocket(socket);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (!isOnPauseFromConversationClick) {
+            socket.emit("disconnect", "");
+            socket.disconnect();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (!isOnPauseFromConversationClick) {
+            socket.emit("disconnect", "");
+            socket.disconnect();
         }
     }
 
@@ -400,9 +450,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private int indexOf(String senderId){
+    private int indexOf(String senderId) {
         for (int i = 0; i < alConversations.size(); i++) {
-            if(alConversations.get(i).getUserId().equals(senderId)){
+            if (alConversations.get(i).getUserId().equals(senderId)) {
                 return i;
             }
         }
@@ -438,7 +488,7 @@ public class MainActivity extends AppCompatActivity {
                     loadItems(c);
                 }
             }
-            adapter = new ConversationsAdapter(getApplicationContext(), alConversations);
+            adapter = new ConversationsAdapter(getApplicationContext(), alConversations, MainActivity.this);
             rvConversations.setLayoutManager(linearLayoutManager);
             rvConversations.setAdapter(adapter);
             rvConversations.setHasFixedSize(true);
@@ -493,5 +543,14 @@ public class MainActivity extends AppCompatActivity {
                 }
             }, 200); // It is important to put a delay so that when you scroll very fast it does not get blocked
         }
+    }
+
+    /**
+     * INTERFACES
+     **/
+
+    @Override
+    public void onConversationClick() {
+        isOnPauseFromConversationClick = true;
     }
 }

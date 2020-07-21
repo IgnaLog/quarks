@@ -380,14 +380,14 @@ public class FCM extends FirebaseMessagingService {
 
     /* We create an intent to take you to Chat Activity that goes through MainActivity or CoversationActivity first */
     private static PendingIntent pendingIntentChat(Context context, String userId, String username) {
-        int requestID = (int) System.currentTimeMillis();
+        int requestId = (int) System.currentTimeMillis();
         Intent intent1 = new Intent(context, MainActivity.class);
         intent1.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
         Intent intent2 = new Intent(context, ChatActivity.class);
         intent2.putExtra("receiverId", userId);
         intent2.putExtra("receiverUsername", username);
         Intent[] intents = new Intent[]{intent1, intent2};
-        return PendingIntent.getActivities(context, requestID, intents, PendingIntent.FLAG_UPDATE_CURRENT);
+        return PendingIntent.getActivities(context, requestId, intents, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     /* An intent that takes you to ConversationActivity or MainActivity */
