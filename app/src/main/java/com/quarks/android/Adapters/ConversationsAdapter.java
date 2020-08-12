@@ -13,7 +13,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.quarks.android.ChatActivity;
-import com.quarks.android.Interfaces.InterfaceClickConversation;
+import com.quarks.android.Interfaces.ClickConversationInterface;
 import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.R;
 import com.quarks.android.Utils.Functions;
@@ -28,10 +28,10 @@ import de.hdodenhof.circleimageview.CircleImageView;
 public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdapter.ViewHolder> {
     private ArrayList<ConversationItem> alConversations;
     private Context mContext;
-    private InterfaceClickConversation dtInterface;
+    private ClickConversationInterface dtInterface;
     private static final int LAUNCH_SECOND_ACTIVITY = 1;
 
-    public ConversationsAdapter(Context context, ArrayList<ConversationItem> alConversations, InterfaceClickConversation dtInterface) {
+    public ConversationsAdapter(Context context, ArrayList<ConversationItem> alConversations, ClickConversationInterface dtInterface) {
         mContext = context;
         this.alConversations = alConversations;
         this.dtInterface = dtInterface;

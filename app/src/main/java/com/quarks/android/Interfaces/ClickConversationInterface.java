@@ -1,5 +1,5 @@
 package com.quarks.android.Interfaces;
 
-public interface InterfaceClickConversation {
+public interface ClickConversationInterface {
     void onConversationClick();
 }

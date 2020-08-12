@@ -20,7 +20,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.quarks.android.Adapters.ConversationsAdapter;
 import com.quarks.android.CustomViews.LoadingWheel;
-import com.quarks.android.Interfaces.InterfaceClickConversation;
+import com.quarks.android.Interfaces.ClickConversationInterface;
 import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.Functions;
@@ -42,7 +42,7 @@ import io.socket.emitter.Emitter;
 
 //import com.quarks.android.Utils.SocketHandler;
 
-public class MainActivity extends AppCompatActivity implements InterfaceClickConversation {
+public class MainActivity extends AppCompatActivity implements ClickConversationInterface {
 
     private FloatingActionButton fabContacts;
     private RecyclerView rvConversations;
@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity implements InterfaceClickCon
     private String userId = "", username = "";
     private Map<String, String> values = new HashMap<String, String>();
 
-    private ConversationsAdapter adapter;
+    public static ConversationsAdapter adapter;
     private ArrayList<ConversationItem> alConversations = new ArrayList<ConversationItem>();
 
     private SQLiteDatabase db;

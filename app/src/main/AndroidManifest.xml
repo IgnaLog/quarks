@@ -27,6 +27,7 @@
             android:name=".Utils.JobServiceUnsentMessages"
             android:permission="android.permission.BIND_JOB_SERVICE">
         </service>
+
         <service
             android:name=".Utils.FCM"
             android:exported="false">

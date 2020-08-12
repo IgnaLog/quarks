@@ -1,11 +1,14 @@
 package com.quarks.android.Adapters;
 
 import android.content.Context;
+import android.database.Cursor;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -17,6 +20,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.quarks.android.Items.MessageItem;
 import com.quarks.android.R;
+import com.quarks.android.Utils.DataBaseHelper;
+import com.quarks.android.Utils.Functions;
+import com.quarks.android.Utils.MessageBubbleLayout;
 
 import java.util.ArrayList;
 
@@ -25,16 +31,24 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
     private ArrayList<MessageItem> listMessage;
     private Context context;
     private boolean isLastItem = false;
+    private DataBaseHelper dataBaseHelper;
+    private String senderId;
+    private static final int FIRST_BUBBLE_OUTGOING = 1;
+    private static final int BUBBLE_OUTGOING = 2;
+    private static final int FIRST_BUBBLE_INCOMING = 3;
+    private static final int BUBBLE_INCOMING = 4;
 
-    public MessagesAdapter(Context context, ArrayList<MessageItem> listMessage) {
+    public MessagesAdapter(Context context, ArrayList<MessageItem> listMessage, String senderId) {
         this.context = context;
         this.listMessage = listMessage;
+        this.senderId = senderId;
+        dataBaseHelper = new DataBaseHelper(context);
     }
 
     @NonNull
     @Override
     public MessagesViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(context).inflate(R.layout.card_view_message, parent, false);
+        View v = LayoutInflater.from(context).inflate(R.layout.item_message, parent, false);
         return new MessagesViewHolder(v);
     }
 
@@ -43,48 +57,57 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
 
         /** DESIGN */
 
-        RelativeLayout.LayoutParams ryCardView = (RelativeLayout.LayoutParams) holder.cardView.getLayoutParams();
-        FrameLayout.LayoutParams fyLayoutMessage = (FrameLayout.LayoutParams) holder.layoutMessage.getLayoutParams();
-        LinearLayout.LayoutParams lyTextViewTime = (LinearLayout.LayoutParams) holder.tvTime.getLayoutParams();
-        LinearLayout.LayoutParams lyTextViewMessage = (LinearLayout.LayoutParams) holder.tvMessage.getLayoutParams();
-
+        LinearLayout.LayoutParams lyMessageParams = (LinearLayout.LayoutParams) holder.lyMessage.getLayoutParams();
         if (listMessage.get(position).getMessageChannel() == 1) { // ISSUER
-            holder.layoutMessage.setBackgroundColor(ContextCompat.getColor(context, R.color.colorMensajeEmisor));
-            ryCardView.addRule(RelativeLayout.ALIGN_PARENT_LEFT, 0);
-            ryCardView.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-            ryCardView.setMarginEnd(50);
-            fyLayoutMessage.gravity = Gravity.RIGHT;
-            lyTextViewTime.gravity = Gravity.RIGHT;
-            lyTextViewMessage.gravity = Gravity.RIGHT;
-            holder.tvMessage.setGravity(Gravity.RIGHT);
+            lyMessageParams.gravity = Gravity.END;
+            holder.ivTick.setVisibility(View.VISIBLE);
+            if (position > 0) {
+                if (listMessage.get(position - 1).getMessageChannel() == 1) {
+                    stylizeBubble(holder, lyMessageParams, BUBBLE_OUTGOING);
+                } else {
+                    stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_OUTGOING);
+                }
+            } else {
+                int channel = dataBaseHelper.getPreviousMessage(senderId, listMessage.get(position).getMessageId());
+                if (channel == 1) {
+                    stylizeBubble(holder, lyMessageParams, BUBBLE_OUTGOING);
+                } else {
+                    stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_OUTGOING);
+                }
+            }
         } else if (listMessage.get(position).getMessageChannel() == 2) { // RECEIVER
-            holder.layoutMessage.setBackgroundColor(ContextCompat.getColor(context, R.color.colorMensajeReceptor));
-            ryCardView.addRule(RelativeLayout.ALIGN_PARENT_RIGHT, 0);
-            ryCardView.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
-            ryCardView.setMarginStart(50);
-            fyLayoutMessage.gravity = Gravity.LEFT;
-            lyTextViewTime.gravity = Gravity.RIGHT;
-            lyTextViewMessage.gravity = Gravity.LEFT;
-            holder.tvMessage.setGravity(Gravity.LEFT);
+            lyMessageParams.gravity = Gravity.START;
+            holder.ivTick.setVisibility(View.GONE);
+            if (position > 0) {
+                if (listMessage.get(position - 1).getMessageChannel() == 2) {
+                    stylizeBubble(holder, lyMessageParams, BUBBLE_INCOMING);
+                } else {
+                    stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_INCOMING);
+                }
+            } else {
+                int channel = dataBaseHelper.getPreviousMessage(senderId, listMessage.get(position).getMessageId());
+                if (channel == 2) {
+                    stylizeBubble(holder, lyMessageParams, BUBBLE_INCOMING);
+                } else {
+                    stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_INCOMING);
+                }
+            }
         }
-        holder.cardView.setLayoutParams(ryCardView);
-        holder.layoutMessage.setLayoutParams(fyLayoutMessage);
-        holder.tvTime.setLayoutParams(lyTextViewTime);
-        holder.tvMessage.setLayoutParams(lyTextViewMessage);
+        holder.lyMessage.setLayoutParams(lyMessageParams);
 
         /** SETTERS */
 
         /* New messages */
-        if(listMessage.get(position).getPendingMessages() > 0){
+        if (listMessage.get(position).getPendingMessages() > 0) {
             holder.lyNewMessages.setVisibility(View.VISIBLE);
-            if(listMessage.get(position).getPendingMessages() == 1){
-                String strNewMessages = "1 "+ context.getResources().getString(R.string.unread_message);
+            if (listMessage.get(position).getPendingMessages() == 1) {
+                String strNewMessages = "1 " + context.getResources().getString(R.string.unread_message);
                 holder.tvNewMessages.setText(strNewMessages);
-            }else{
+            } else {
                 String strNewMessages = listMessage.get(position).getPendingMessages() + " " + context.getResources().getString(R.string.unread_messages);
                 holder.tvNewMessages.setText(strNewMessages);
             }
-        }else{
+        } else {
             holder.lyNewMessages.setVisibility(View.GONE);
         }
 
@@ -109,6 +132,35 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
         holder.tvTime.setText(listMessage.get(position).getMessageTime());
     }
 
+    private void stylizeBubble(MessagesViewHolder holder, LinearLayout.LayoutParams lyMessageParams, int typeBubble) {
+        switch (typeBubble) {
+            case FIRST_BUBBLE_OUTGOING:
+                lyMessageParams.topMargin = (int) Functions.dpToPx(context, 8);
+                lyMessageParams.bottomMargin = (int) Functions.dpToPx(context, 0);
+                holder.lyMessage.setBackgroundResource(R.drawable.bg_first_bubble_outgoing);
+                holder.tvMessage.setPadding((int) Functions.dpToPx(context, 8), 0, (int) Functions.dpToPx(context, 7), 0);
+                break;
+            case BUBBLE_OUTGOING:
+                lyMessageParams.topMargin = (int) Functions.dpToPx(context, 0);
+                lyMessageParams.bottomMargin = (int) Functions.dpToPx(context, 0);
+                holder.lyMessage.setBackgroundResource(R.drawable.bg_bubble_outgoing);
+                holder.tvMessage.setPadding((int) Functions.dpToPx(context, 8), 0, (int) Functions.dpToPx(context, (float) 7.5), 0);
+                break;
+            case FIRST_BUBBLE_INCOMING:
+                lyMessageParams.topMargin = (int) Functions.dpToPx(context, 8);
+                lyMessageParams.bottomMargin = (int) Functions.dpToPx(context, 0);
+                holder.lyMessage.setBackgroundResource(R.drawable.bg_first_bubble_incoming);
+                holder.tvMessage.setPadding((int) Functions.dpToPx(context, 16), 0, (int) Functions.dpToPx(context, 7), 0);
+                break;
+            case BUBBLE_INCOMING:
+                lyMessageParams.topMargin = (int) Functions.dpToPx(context, 1);
+                lyMessageParams.bottomMargin = (int) Functions.dpToPx(context, 0);
+                holder.lyMessage.setBackgroundResource(R.drawable.bg_bubble_incoming);
+                holder.tvMessage.setPadding((int) Functions.dpToPx(context, 16), 0, (int) Functions.dpToPx(context, (float) 7.5), 0);
+                break;
+        }
+    }
+
     public void isLastItem() {
         isLastItem = true;
     }
@@ -120,19 +172,27 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
 
     static class MessagesViewHolder extends RecyclerView.ViewHolder {
 
-        CardView cardView;
         TextView tvMessage, tvTime, tvDate, tvNewMessages;
-        LinearLayout layoutMessage, lyNewMessages;
+        LinearLayout lyMessage, lyTimeAndCheck, lyNewMessages;
+        MessageBubbleLayout lyBubbleMessage;
+        ImageView ivTick;
 
         MessagesViewHolder(View itemView) {
             super(itemView);
-            cardView = itemView.findViewById(R.id.cvMessage);
             tvMessage = itemView.findViewById(R.id.tvMessage);
             tvTime = itemView.findViewById(R.id.tvTime);
             tvDate = itemView.findViewById(R.id.tvDate);
-            layoutMessage = itemView.findViewById(R.id.lyMessage);
-            lyNewMessages = itemView.findViewById(R.id.lyNewMessages);
             tvNewMessages = itemView.findViewById(R.id.tvNewMessages);
+
+            lyMessage = itemView.findViewById(R.id.lyMessage);
+            lyTimeAndCheck = itemView.findViewById(R.id.lyTimeAndCheck);
+            lyNewMessages = itemView.findViewById(R.id.lyNewMessages);
+
+            lyBubbleMessage = itemView.findViewById(R.id.lyBubbleMessage);
+
+            ivTick = itemView.findViewById(R.id.ivTick);
+
+
         }
     }
 }

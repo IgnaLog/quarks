@@ -122,7 +122,7 @@
     <string name="today">hoy</string>
     <string name="typing">Escribiendo…</string>
 
-    <!--  card_view_message  -->
+    <!--  item_message  -->
     <string name="unread_messages">MENSAJES NO LEÍDOS</string>
     <string name="unread_message">MENSAJE NO LEÍDO</string>
 

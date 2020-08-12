@@ -118,6 +118,28 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return cursor;
     }
 
+    public int getPreviousMessage(String senderId, String id){
+        SQLiteDatabase db = this.getReadableDatabase();
+        int channel = -1;
+
+        String sql = "SELECT * FROM " + TABLE_MESSAGES + " WHERE " + COLUMN_SENDER_ID + "= '" + senderId + "' " +
+                "AND " + COLUMN_ID + " < (SELECT " + COLUMN_ID + " FROM " + TABLE_MESSAGES + " WHERE " + COLUMN_ID + " = " + id + ") " +
+                "ORDER BY " + COLUMN_ID + " DESC LIMIT 1;";
+        Cursor cursor = null;
+        if (db != null) {
+            cursor = db.rawQuery(sql, null);
+        }
+        if (cursor != null) {
+            while (!cursor.isAfterLast()) {
+                cursor.moveToFirst();
+                channel = cursor.getInt(cursor.getColumnIndex("channel"));
+                cursor.close();
+            }
+        }
+
+        return channel;
+    }
+
     /* Function that leaves pending messages with the value of zero to mark them as read */
     public void updatePendingMessages(String senderId) {
         SQLiteDatabase db = this.getWritableDatabase();
@@ -161,7 +183,6 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     public Map<String, String> storeMessage(String senderId, String senderUsername, String message, int channel, String dateTime, int pending) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cvMessage = new ContentValues();
-        ContentValues cvConversation = new ContentValues();
         Map<String, String> values = new HashMap<String, String>();
         long resultID;
 
@@ -181,29 +202,10 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             cvMessage.put(COLUMN_PENDING, pending);
             resultID = db.insert(TABLE_MESSAGES, null, cvMessage);
         }
-
         String time = getTime(resultID);
         values.put("id", String.valueOf(resultID));
         values.put("time", time);
 
-        /* Insert a new conversation if it doesn't exist */
-//        if (!thereIsConversation(senderId)) {
-//            cvConversation.put(COLUMN_CONVER_SENDER_ID, senderId);
-//            cvConversation.put(COLUMN_CONVER_SENDER_USERNAME, senderUsername);
-//            cvConversation.put(COLUMN_CONVER_LAST_MESSAGE, message);
-//            cvConversation.put(COLUMN_CONVER_TIME, time);
-//            if (isNewMessageConversation) {
-//                cvConversation.put(COLUMN_CONVER_NEW_MESSAGES, 1);
-//            }
-//            db.insert(TABLE_CONVERSATIONS, null, cvConversation);
-//        } else {
-//            cvConversation.put(COLUMN_CONVER_LAST_MESSAGE, message);
-//            cvConversation.put(COLUMN_CONVER_TIME, time);
-//            if (isNewMessageConversation) {
-//                cvConversation.put(COLUMN_CONVER_NEW_MESSAGES, incrementNumNewMessageConversation(senderId));
-//            }
-//            db.update(TABLE_CONVERSATIONS, cvConversation, COLUMN_CONVER_SENDER_ID + "=" + senderId, null);
-//        }
         return values;
     }
 

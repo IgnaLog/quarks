@@ -29,6 +29,7 @@
     <color name="bg_gris">#F0F0F0</color>
     <color name="bg_green">#18BCA3</color>
     <color name="bg_green2">#4CE9BA</color>
+    <color name="bg_chat">#EEE7DE</color>
 
     <!-- Messages Colors -->
     <color name="colorMensajeEmisor">#b74caae9</color>

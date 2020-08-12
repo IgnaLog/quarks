@@ -74,7 +74,7 @@ public class ChatActivity extends AppCompatActivity {
     private Context context = ChatActivity.this;
     private String userId = "", username = "", receiverId = "", receiverUsername = "";
 
-    private DataBaseHelper dataBaseHelper = new DataBaseHelper(context);
+    private DataBaseHelper dataBaseHelper;
     private Cursor cursor;
 
     private Map<String, String> values = new HashMap<String, String>();
@@ -82,8 +82,8 @@ public class ChatActivity extends AppCompatActivity {
     private boolean isScrolling = false;
     private boolean endOfScroll = false;
     private int firstVisibleItem, firstCompletelyVisibleItem, lastVisibleItem, totalItems, scrollOutItems, totalCursor;
-    private static int limitItemsToScroll = 20; // Limit number to start loading batch messages
-    private static int itemsToShow = 20; // Number of messages to show at the beginning
+    private static int limitItemsToScroll = 80; // Limit number to start loading batch messages
+    private static int itemsToShow = 80; // Number of messages to show at the beginning
     private static int nextItemsToShow = 50; // Number of messages to display each time there is a new load
     private static int indexItems = 0; // Indicator to know where we are in the message cursor of the local database
 
@@ -639,6 +639,9 @@ public class ChatActivity extends AppCompatActivity {
         tvUsername = findViewById(R.id.tvUsername);
         tvTyping = findViewById(R.id.tvTyping);
 
+        /* Data Base */
+        dataBaseHelper = new DataBaseHelper(context);
+
         /* Animations */
         animDateAppear = ObjectAnimator.ofFloat(tvDate, "translationY", 0f, 110f);
         animDateAppear.setInterpolator(new DecelerateInterpolator());
@@ -653,18 +656,18 @@ public class ChatActivity extends AppCompatActivity {
 
         loadingWheel = new LoadingWheel(context, lyCiruclarProgressBar); // To show a wheel loading
 
-        /* We initialize the recyclerview with its adapter */
-        linearLayoutManager = new LinearLayoutManager(this);
-        linearLayoutManager.setStackFromEnd(true);
-        rvChat.setLayoutManager(linearLayoutManager);
-        adapter = new MessagesAdapter(getApplicationContext(), alMessage);
-        rvChat.setAdapter(adapter);
-
         /* We get our username, userId and the receiverId receiverUsername to whom we are going to send the messages */
         userId = Preferences.getUserId(context);
         username = Preferences.getUserName(context);
         receiverId = getIntent().getStringExtra("receiverId");
         receiverUsername = getIntent().getStringExtra("receiverUsername"); // We capture the username and id of the previous activity
+
+        /* We initialize the recyclerview with its adapter */
+        linearLayoutManager = new LinearLayoutManager(this);
+        linearLayoutManager.setStackFromEnd(true);
+        rvChat.setLayoutManager(linearLayoutManager);
+        adapter = new MessagesAdapter(getApplicationContext(), alMessage, receiverId);
+        rvChat.setAdapter(adapter);
 
         /* Put the receiver's username in the title */
         tvUsername.setText(receiverUsername);
@@ -716,7 +719,7 @@ public class ChatActivity extends AppCompatActivity {
 
     /* Function that loads the cursor data into the ArrayList */
     public void loadItems(@NonNull Cursor c, int totalPending) {
-        // If it is the first message found with the value pending 1, then we enter the value of totalPending. This is to show the total of unread messages in a textView later
+        // This is to show the total of unread messages in a textView later. If it is the first message found with the value pending 1, then we enter the value of totalPending
         if (c.getInt(c.getColumnIndex("pending")) == 1 && firstPendingMessage) {
             firstPendingMessage = false;
             alMessage.add(new MessageItem(
