@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.socket.client.Ack;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
@@ -104,7 +105,6 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
             socket.connect();
             socket.on("connected", connected);
             socket.on("all-pending-messages", getPendingMessages);
-            socket.on("pending-messages", getPendingMessages);
             socket.on("send-message", listeningMessages);
             socket.on("typing", onTyping);
             socket.on("stop-typing", onStopTyping);
@@ -114,7 +114,6 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
             socket.off();
             socket.on("connected", connected);
             socket.on("all-pending-messages", getPendingMessages);
-            socket.on("pending-messages", getPendingMessages);
             socket.on("send-message", listeningMessages);
             socket.on("typing", onTyping);
             socket.on("stop-typing", onStopTyping);
@@ -340,7 +339,6 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                 socket.off();
                 socket.on("connected", connected);
                 socket.on("all-pending-messages", getPendingMessages);
-                socket.on("pending-messages", getPendingMessages);
                 socket.on("send-message", listeningMessages);
                 socket.on("typing", onTyping);
                 socket.on("stop-typing", onStopTyping);

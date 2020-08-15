@@ -136,7 +136,6 @@ public class ChatActivity extends AppCompatActivity {
             }
             socket.connect();
             socket.on("connected", connected);
-            socket.on("all-pending-messages", getPendingMessages);
             socket.on("pending-messages", getPendingMessages);
             socket.on("send-message", listeningMessages);
             socket.on("typing", onTyping);
@@ -146,7 +145,6 @@ public class ChatActivity extends AppCompatActivity {
             socket = SocketHandler.getSocket();
             socket.off();
             socket.on("connected", connected);
-            socket.on("all-pending-messages", getPendingMessages);
             socket.on("pending-messages", getPendingMessages);
             socket.on("send-message", listeningMessages);
             socket.on("typing", onTyping);
