@@ -203,7 +203,7 @@ public class NoUsernameActivity extends AppCompatActivity {
 
                             } else {
                                 // If it does not exist, we show the green check
-                                etUsername.setCompoundDrawablesWithIntrinsicBounds(null, null, ContextCompat.getDrawable(NoUsernameActivity.this, R.drawable.ic_tick_correcto), null);
+                                etUsername.setCompoundDrawablesWithIntrinsicBounds(null, null, ContextCompat.getDrawable(NoUsernameActivity.this, R.drawable.ic_correct_tick), null);
                             }
                         } catch (JSONException e) {
                             e.printStackTrace();

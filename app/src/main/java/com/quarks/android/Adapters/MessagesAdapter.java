@@ -33,10 +33,17 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
     private boolean isLastItem = false;
     private DataBaseHelper dataBaseHelper;
     private String senderId;
+
     private static final int FIRST_BUBBLE_OUTGOING = 1;
     private static final int BUBBLE_OUTGOING = 2;
     private static final int FIRST_BUBBLE_INCOMING = 3;
     private static final int BUBBLE_INCOMING = 4;
+
+    private static final int STATELESS = -1;
+    private static final int NOT_SENT = 0;
+    private static final int SENT = 1;
+    private static final int RECEIVED = 2;
+    private static final int VIEWED = 3;
 
     public MessagesAdapter(Context context, ArrayList<MessageItem> listMessage, String senderId) {
         this.context = context;
@@ -130,6 +137,23 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
         /* Rest of views */
         holder.tvMessage.setText(listMessage.get(position).getMessage());
         holder.tvTime.setText(listMessage.get(position).getMessageTime());
+        switch (listMessage.get(position).getStatus()) {
+            case STATELESS:
+                holder.ivTick.setImageDrawable(context.getResources().getDrawable(R.drawable.ic_check, context.getApplicationContext().getTheme()));
+            case NOT_SENT:
+                holder.ivTick.setImageDrawable(context.getResources().getDrawable(R.drawable.ic_clock, context.getApplicationContext().getTheme()));;
+                break;
+            case SENT:
+                holder.ivTick.setImageDrawable(context.getResources().getDrawable(R.drawable.ic_check, context.getApplicationContext().getTheme()));
+                break;
+            case RECEIVED:
+                holder.ivTick.setImageDrawable(context.getResources().getDrawable(R.drawable.ic_double_check, context.getApplicationContext().getTheme()));
+                break;
+            case VIEWED:
+                holder.ivTick.setImageDrawable(context.getResources().getDrawable(R.drawable.ic_viewed, context.getApplicationContext().getTheme()));
+                break;
+        }
+
     }
 
     private void stylizeBubble(MessagesViewHolder holder, LinearLayout.LayoutParams lyMessageParams, int typeBubble) {

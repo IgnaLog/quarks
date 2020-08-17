@@ -21,16 +21,21 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_SENDER_USERNAME = "sender_username";
     private static final String COLUMN_CHANNEL = "channel";
     private static final String COLUMN_MESSAGE = "message";
+    private static final String COLUMN_SENDER_MESSAGE_ID = "sender_message_id";
     private static final String COLUMN_TIME = "time";
     private static final String COLUMN_PENDING = "pending";
+    private static final String COLUMN_STATUS = "status";
     private static final String DATABASE_CREATE_MESSAGES = "CREATE TABLE " + TABLE_MESSAGES + " ( " +
             COLUMN_ID + " INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
             COLUMN_SENDER_ID + " VARCHAR(30) NOT NULL, " +
             COLUMN_SENDER_USERNAME + " VARCHAR(30) NOT NULL, " +
             COLUMN_CHANNEL + " INTEGER NOT NULL, " +
             COLUMN_MESSAGE + " TEXT NOT NULL, " +
+            COLUMN_SENDER_MESSAGE_ID + " TEXT, " +
             COLUMN_TIME + " TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
-            COLUMN_PENDING + " INTEGER NOT NULL);";
+            COLUMN_PENDING + " INTEGER NOT NULL, " +
+            COLUMN_STATUS + " INTEGER NOT NULL);";
+
 
     /* TABLE CONVERSATIONS */
     private static final String TABLE_CONVERSATIONS = "conversations";
@@ -180,7 +185,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     }
 
     /* Function that saves a message in the database. Insert a new conversation if it doesn't exist. Returns a Map with the new id of the message entered and its date and time */
-    public Map<String, String> storeMessage(String senderId, String senderUsername, String message, int channel, String dateTime, int pending) {
+    public Map<String, String> storeMessage(String senderId, String senderUsername, String message, String senderMessageId, int channel, String dateTime, int pending, int status) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cvMessage = new ContentValues();
         Map<String, String> values = new HashMap<String, String>();
@@ -190,16 +195,20 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             cvMessage.put(COLUMN_SENDER_ID, senderId);
             cvMessage.put(COLUMN_SENDER_USERNAME, senderUsername);
             cvMessage.put(COLUMN_MESSAGE, message);
+            cvMessage.put(COLUMN_SENDER_MESSAGE_ID, senderMessageId);
             cvMessage.put(COLUMN_CHANNEL, channel);
             cvMessage.put(COLUMN_PENDING, pending);
+            cvMessage.put(COLUMN_STATUS, status);
             resultID = db.insert(TABLE_MESSAGES, null, cvMessage);
         } else { // With dateTime established
             cvMessage.put(COLUMN_SENDER_ID, senderId);
             cvMessage.put(COLUMN_SENDER_USERNAME, senderUsername);
             cvMessage.put(COLUMN_MESSAGE, message);
+            cvMessage.put(COLUMN_SENDER_MESSAGE_ID, senderMessageId);
             cvMessage.put(COLUMN_CHANNEL, channel);
             cvMessage.put(COLUMN_TIME, dateTime);
             cvMessage.put(COLUMN_PENDING, pending);
+            cvMessage.put(COLUMN_STATUS, status);
             resultID = db.insert(TABLE_MESSAGES, null, cvMessage);
         }
         String time = getTime(resultID);

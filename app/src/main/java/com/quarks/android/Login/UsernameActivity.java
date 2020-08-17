@@ -190,7 +190,7 @@ public class UsernameActivity extends AppCompatActivity {
                                 Functions.setTvError(tvError, etUsername, getResources().getString(R.string.exists_username), true);
                                 etUsername.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
                             } else { // If it does not exist, we show the green check
-                                etUsername.setCompoundDrawablesWithIntrinsicBounds(null, null, ContextCompat.getDrawable(UsernameActivity.this, R.drawable.ic_tick_correcto), null);
+                                etUsername.setCompoundDrawablesWithIntrinsicBounds(null, null, ContextCompat.getDrawable(UsernameActivity.this, R.drawable.ic_correct_tick), null);
                             }
                         } catch (JSONException e) {
                             e.printStackTrace();

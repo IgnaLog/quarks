@@ -36,12 +36,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.socket.client.Ack;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
-
-//import com.quarks.android.Utils.SocketHandler;
 
 public class MainActivity extends AppCompatActivity implements ClickConversationInterface {
 
@@ -74,6 +71,12 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
 
     private static final int LAUNCH_SECOND_ACTIVITY = 1;
     private boolean isOnPauseFromConversationClick = false;
+
+    private static final int STATELESS = -1;
+//    private static final int NOT_SENT = 0;
+//    private static final int SENT = 1;
+//    private static final int RECEIVED = 2;
+//    private static final int VIEWED = 3;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -212,13 +215,14 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                                         if (messages.length() > 0) {
                                             for (int j = 0; j < messages.length(); j++) {
                                                 JSONObject jsonObjectMessages = messages.getJSONObject(j);
+                                                String senderMessageId = jsonObjectMessages.getString("message_id");
                                                 String message = jsonObjectMessages.getString("message");
                                                 String mongoTime = jsonObjectMessages.getString("time");
                                                 String time = Functions.formatMongoTime(mongoTime);
                                                 int channel = 2;
 
                                                 /* We save the message in the local database and collect the date and the message id to compose a new item */
-                                                values = dataBaseHelper.storeMessage(senderId, senderUsername, message, channel, time, PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
+                                                values = dataBaseHelper.storeMessage(senderId, senderUsername, message, senderMessageId, channel, time, PENDING, STATELESS); // We store the message into the local data base and we obtain the id and time from the record stored
                                             }
                                         }
                                     }
@@ -262,19 +266,21 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                     JSONObject data = (JSONObject) args[0];
                     String senderId = "";
                     String senderUsername = "";
+                    String senderMessageId = "";
                     String message = "";
                     int channel = 2;
 
                     try {
                         senderId = data.getString("senderId");
                         senderUsername = data.getString("senderUsername");
+                        senderMessageId = data.getString("contentId");
                         message = data.getString("content");
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
 
                     /* We save the message in the local database and collect the date and the message id to compose a new item */
-                    values = dataBaseHelper.storeMessage(senderId, senderUsername, message, channel, "", PENDING); // We store the message into the local data base and we obtain the id and time from the record stored
+                    values = dataBaseHelper.storeMessage(senderId, senderUsername, message, senderMessageId, channel, "", PENDING, STATELESS); // We store the message into the local data base and we obtain the id and time from the record stored
                     String dateTime = values.get("time"); // Comes from local database when saving the message
 
                     // We updated the conversations table

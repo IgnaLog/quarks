@@ -4,18 +4,22 @@ public class MessageItem {
 
     private String messageId;
     private String message;
+    private String senderMessageId;
     private int messageChannel;
     private String messageTime;
     private String date;
     private int pendingMessages;
+    private int status;
 
-    public MessageItem(String messageId, String message, int messageChannel, String messageTime, String date, int pendingMessages) {
+    public MessageItem(String messageId, String message, String senderMessageId, int messageChannel, String messageTime, String date, int pendingMessages, int status) {
         this.messageId = messageId;
         this.message = message;
+        this.senderMessageId = senderMessageId;
         this.messageChannel = messageChannel;
         this.messageTime = messageTime;
         this.date = date;
         this.pendingMessages = pendingMessages;
+        this.status = status;
     }
 
     public String getMessageId() {
@@ -32,6 +36,14 @@ public class MessageItem {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public String getSenderMessageId() {
+        return senderMessageId;
+    }
+
+    public void setSenderMessageId(String senderMessageId) {
+        this.senderMessageId = senderMessageId;
     }
 
     public int getMessageChannel() {
@@ -66,4 +78,11 @@ public class MessageItem {
         this.pendingMessages = pendingMessages;
     }
 
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
+    }
 }

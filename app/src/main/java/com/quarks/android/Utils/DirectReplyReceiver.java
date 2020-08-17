@@ -32,6 +32,12 @@ public class DirectReplyReceiver extends BroadcastReceiver {
     private NotificationManagerCompat notificationManager;
     private Context mContext;
 
+    private static final int SENT = 1;
+//    private static final int STATELESS = -1;
+    private static final int NOT_SENT = 0;
+//    private static final int RECEIVED = 2;
+//    private static final int VIEWED = 3;
+
     @Override
     public void onReceive(Context context, final Intent intent) {
         Bundle remoteInput = RemoteInput.getResultsFromIntent(intent);
@@ -60,38 +66,52 @@ public class DirectReplyReceiver extends BroadcastReceiver {
     private Emitter.Listener connected = new Emitter.Listener() {
         @Override
         public void call(final Object... args) {
-            JSONObject jsonObjectData = new JSONObject();
-            try {
-                jsonObjectData.put("userId", receiverId); // Who is going to receive the message (receiver)
-                jsonObjectData.put("username", receiverUsername);
-                jsonObjectData.put("senderId", userId); // Who send the message (sender)
-                jsonObjectData.put("senderUsername", username);
-                jsonObjectData.put("content", replyText); // The message
-            } catch (JSONException e) {
-                e.printStackTrace();
+
+            if (Functions.isNetworkAvailable(mContext) && socket.connected()) {
+                /* We save the message in the local database and collect the date to compose the conversations */
+                values = dataBaseHelper.storeMessage(receiverId, receiverUsername, String.valueOf(replyText), "", 1, "", 0, SENT); // We store the message into the local data base and we obtain the id and time from the record stored
+                String id = values.get("id");
+                String dateTime = values.get("time");
+
+                /* We updated the conversations table to use it in the conversations activity */
+                dataBaseHelper.updateConversations(receiverId, receiverUsername, String.valueOf(replyText), dateTime, 0);
+
+                // We prepare a jsonObject to send the message to the server
+                JSONObject jsonObjectData = new JSONObject();
+                try {
+                    jsonObjectData.put("userId", receiverId); // Who is going to receive the message (receiver)
+                    jsonObjectData.put("username", receiverUsername);
+                    jsonObjectData.put("senderId", userId); // Who send the message (sender)
+                    jsonObjectData.put("senderUsername", username);
+                    jsonObjectData.put("content", replyText); // The message
+                    jsonObjectData.put("contentId", id);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                socket.emit("direct-reply-message", jsonObjectData);
+
+                /* Disconnecting the socket */
+                socket.emit("disconnect", "");
+                socket.disconnect();
+            }else{
+                /* We save the message in the local database and collect the date to compose the conversations */
+                values = dataBaseHelper.storeMessage(receiverId, receiverUsername, String.valueOf(replyText), "", 1, "", 0, NOT_SENT); // We store the message into the local data base and we obtain the id and time from the record stored
+                String dateTime = values.get("time");
+
+                /* We updated the conversations table to use it in the conversations activity */
+                dataBaseHelper.updateConversations(receiverId, receiverUsername, String.valueOf(replyText), dateTime, 0);
             }
-            socket.emit("direct-reply-message", jsonObjectData);
 
-            /* We save the message in the local database and collect the date to compose the conversations */
-            values = dataBaseHelper.storeMessage(receiverId, receiverUsername, String.valueOf(replyText), 1, "", 0); // We store the message into the local data base and we obtain the id and time from the record stored
-            String dateTime = values.get("time");
-
-            /* We updated the conversations table to use it in the conversations activity */
-            dataBaseHelper.updateConversations(receiverId, receiverUsername, String.valueOf(replyText), dateTime, 0);
-
-            /* Disconnecting the socket */
-            socket.emit("disconnect", "");
-            socket.disconnect();
 
             /* Remove the notification */
-            int id = FCM.getNotificationId(receiverUsername);
+            int notificationId = FCM.getNotificationId(receiverUsername);
             if (FCM.numNotificationsActive(mContext) == 1) { // If there is only one notification, we cancel individual and group notification
                 notificationManager.cancel(FCM.SUMMARY_NOTIFICATION_ID);
-                notificationManager.cancel(id);
+                notificationManager.cancel(notificationId);
                 FCM.mapNotificationIds.remove(receiverUsername);
                 FCM.mapMessages.remove(receiverUsername);
             } else { // Otherwise we remove that notification and update all notifications
-                notificationManager.cancel(id);
+                notificationManager.cancel(notificationId);
                 FCM.mapNotificationIds.remove(receiverUsername);
                 FCM.mapMessages.remove(receiverUsername);
                 FCM.updateMessageNotification(mContext, FCM.mapMessages);

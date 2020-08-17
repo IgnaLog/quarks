@@ -72,7 +72,7 @@
         android:layout_width="0dp"
         android:layout_height="48dp"
         android:background="@drawable/et_bg"
-        android:drawableEnd="@drawable/ic_tick_correcto"
+        android:drawableEnd="@drawable/ic_correct_tick"
         android:hint="@string/username"
         android:inputType="textPersonName"
         android:maxLength="30"
