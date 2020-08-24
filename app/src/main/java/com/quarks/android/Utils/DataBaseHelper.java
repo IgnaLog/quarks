@@ -123,6 +123,26 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return cursor;
     }
 
+    /*  */
+    public Cursor getMessagesNotSent() {
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String sql = "SELECT * FROM " + TABLE_MESSAGES + " WHERE " + COLUMN_STATUS + " = " + 0 + " ORDER BY " + COLUMN_SENDER_USERNAME + ", " + COLUMN_TIME + ";";
+        Cursor cursor = null;
+        if (db != null) {
+            cursor = db.rawQuery(sql, null);
+        }
+        return cursor;
+    }
+
+    /* Function that updates unsent messages to sent */
+    public void updateMessagesNotSent() {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cvMessage = new ContentValues();
+        cvMessage.put(COLUMN_STATUS, 1);
+        db.update(TABLE_MESSAGES, cvMessage, COLUMN_STATUS + "=" + 1, null);
+    }
+
     public int getPreviousMessage(String senderId, String id){
         SQLiteDatabase db = this.getReadableDatabase();
         int channel = -1;

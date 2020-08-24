@@ -109,7 +109,9 @@ public class ContactsActivity extends AppCompatActivity {
                 if (etSearch.getText().toString().trim().length() == 0) {
                     etSearch.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
                     // we clear the adapter
-                    adapter.Clear();
+                    if(adapter != null){
+                        adapter.Clear();
+                    }
                 }
             }
         };

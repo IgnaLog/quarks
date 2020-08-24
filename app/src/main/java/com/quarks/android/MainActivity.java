@@ -2,10 +2,13 @@ package com.quarks.android;
 
 import android.app.Activity;
 import android.app.NotificationManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -21,11 +24,13 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.quarks.android.Adapters.ConversationsAdapter;
 import com.quarks.android.CustomViews.LoadingWheel;
 import com.quarks.android.Interfaces.ClickConversationInterface;
+import com.quarks.android.Interfaces.MessagesNotSentInterface;
 import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.Functions;
 import com.quarks.android.Utils.Preferences;
 import com.quarks.android.Utils.SocketHandler;
+import com.quarks.android.Utils.checkNetworkReceiver;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -40,7 +45,7 @@ import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
 
-public class MainActivity extends AppCompatActivity implements ClickConversationInterface {
+public class MainActivity extends AppCompatActivity implements ClickConversationInterface, MessagesNotSentInterface {
 
     private FloatingActionButton fabContacts;
     private RecyclerView rvConversations;
@@ -78,6 +83,8 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
 //    private static final int RECEIVED = 2;
 //    private static final int VIEWED = 3;
 
+    private BroadcastReceiver mNetworkReceiver;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -88,6 +95,10 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
         fabContacts = findViewById(R.id.fabContacts);
         rvConversations = findViewById(R.id.rvConversations);
         lyCiruclarProgressBar = findViewById(R.id.lyCiruclarProgressBar);
+
+        mNetworkReceiver = new checkNetworkReceiver();
+        registerReceiver(mNetworkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+
 
         dataBaseHelper = new DataBaseHelper(context);
         linearLayoutManager = new LinearLayoutManager(context);
@@ -388,6 +399,9 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        unregisterReceiver(mNetworkReceiver);
+
         if (!isOnPauseFromConversationClick) {
             socket.emit("disconnect", "");
             socket.disconnect();
@@ -556,5 +570,10 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
     @Override
     public void onConversationClick() {
         isOnPauseFromConversationClick = true;
+    }
+
+    @Override
+    public void updateMessagesNotSent() {
+        adapter.notifyDataSetChanged();
     }
 }

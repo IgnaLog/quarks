@@ -23,6 +23,14 @@
             android:exported="false">
         </receiver>
 
+        <receiver android:name=".Utils.checkNetworkReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".Utils.JobServiceUnsentMessages"
             android:permission="android.permission.BIND_JOB_SERVICE">
