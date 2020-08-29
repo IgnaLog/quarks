@@ -140,12 +140,11 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cvMessage = new ContentValues();
         cvMessage.put(COLUMN_STATUS, 1);
-        db.update(TABLE_MESSAGES, cvMessage, COLUMN_STATUS + "=" + 1, null);
+        db.update(TABLE_MESSAGES, cvMessage,"", null);
     }
 
-    public int getPreviousMessage(String senderId, String id){
+    public Cursor getPreviousMessage(String senderId, String id){
         SQLiteDatabase db = this.getReadableDatabase();
-        int channel = -1;
 
         String sql = "SELECT * FROM " + TABLE_MESSAGES + " WHERE " + COLUMN_SENDER_ID + "= '" + senderId + "' " +
                 "AND " + COLUMN_ID + " < (SELECT " + COLUMN_ID + " FROM " + TABLE_MESSAGES + " WHERE " + COLUMN_ID + " = " + id + ") " +
@@ -154,15 +153,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         if (db != null) {
             cursor = db.rawQuery(sql, null);
         }
-        if (cursor != null) {
-            while (!cursor.isAfterLast()) {
-                cursor.moveToFirst();
-                channel = cursor.getInt(cursor.getColumnIndex("channel"));
-                cursor.close();
-            }
-        }
-
-        return channel;
+        return cursor;
     }
 
     /* Function that leaves pending messages with the value of zero to mark them as read */

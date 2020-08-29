@@ -5,9 +5,15 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkRequest;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.Editable;
@@ -23,6 +29,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -32,7 +39,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.quarks.android.Adapters.MessagesAdapter;
 import com.quarks.android.CustomViews.LoadingWheel;
+import com.quarks.android.Interfaces.MessagesNotSentInterface;
+import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.Items.MessageItem;
+
+import com.quarks.android.Utils.CheckNetworkReceiver;
 import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.FCM;
 import com.quarks.android.Utils.Functions;
@@ -55,7 +66,7 @@ import io.socket.emitter.Emitter;
 import static com.quarks.android.Utils.Functions.formatDate;
 import static com.quarks.android.Utils.Functions.formatTime;
 
-public class ChatActivity extends AppCompatActivity {
+public class ChatActivity extends AppCompatActivity implements MessagesNotSentInterface {
 
     public static boolean isChatActivity = false;
 
@@ -65,7 +76,7 @@ public class ChatActivity extends AppCompatActivity {
     private FrameLayout flBtnDownRecycler;
     private View lyCiruclarProgressBar;
     private RecyclerView rvChat;
-    private MessagesAdapter adapter;
+    private static MessagesAdapter adapter;
     private ArrayList<MessageItem> alMessage = new ArrayList<MessageItem>();
     private EditText etMessage;
     private TextView tvDate, tvBadge, tvUsername, tvTyping;
@@ -116,6 +127,9 @@ public class ChatActivity extends AppCompatActivity {
 //    private static final int RECEIVED = 2;
 //    private static final int VIEWED = 3;
 
+    private BroadcastReceiver mNetworkReceiver;
+    private static final String MY_CONNECTIVITY_CHANGE = "com.quarks.android.connectivity.change";
+    // private static final String MY_SOCKET_CONNECTIVITY_CHANGE = "MY_SOCKET_CONNECTIVITY_CHANGE";
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -141,17 +155,19 @@ public class ChatActivity extends AppCompatActivity {
             } catch (URISyntaxException e) {
                 Log.d("Error", "Error socketURL: " + e.toString());
             }
-            socket.connect();
             socket.on("connected", connected);
+            socket.on(Socket.EVENT_RECONNECT, reconnect);
             socket.on("pending-messages", getPendingMessages);
             socket.on("send-message", listeningMessages);
             socket.on("typing", onTyping);
             socket.on("stop-typing", onStopTyping);
+            socket.connect();
             SocketHandler.setSocket(socket);
         } else {
             socket = SocketHandler.getSocket();
             socket.off();
             socket.on("connected", connected);
+            socket.on(Socket.EVENT_RECONNECT, reconnect);
             socket.on("pending-messages", getPendingMessages);
             socket.on("send-message", listeningMessages);
             socket.on("typing", onTyping);
@@ -401,6 +417,20 @@ public class ChatActivity extends AppCompatActivity {
         }
     };
 
+    /* We have been reconnected, so we send our user data */
+    private Emitter.Listener reconnect = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Intent intent = new Intent(MY_CONNECTIVITY_CHANGE);
+                    sendBroadcast(intent);
+                }
+            });
+        }
+    };
+
     /* We retrieve pending messages*/
     private Emitter.Listener getPendingMessages = new Emitter.Listener() {
         @Override
@@ -563,6 +593,7 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        myRegisterReceiver(mNetworkReceiver);
         isChatActivity = true;
         tvTyping.setVisibility(View.GONE);
 
@@ -601,6 +632,9 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        // Suprimimos el broadcastReceiver que controla si hay un cambio en la conexion de internet
+        unregisterReceiver(mNetworkReceiver);
+
         isChatActivity = false;
 
         // Disconnect the sockets so that the server send a notification for new messages
@@ -616,10 +650,12 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        // Si no es un backpressed desconectamos el socket
         if (!isBackPressed) {
             socket.emit("disconnect", "");
             socket.disconnect();
         }
+
     }
 
     @Override
@@ -633,7 +669,7 @@ public class ChatActivity extends AppCompatActivity {
      **/
 
     /* All the view declarations, class assignments and SharedPreferences data retrieval are here */
-    public void setStatements() {
+    private void setStatements() {
         /* Set views ids */
         rootView = findViewById(R.id.rootView);
         rvChat = findViewById(R.id.rvChat);
@@ -682,8 +718,11 @@ public class ChatActivity extends AppCompatActivity {
 
         /* So that in the conversation activity the badge with the new messages appears with the value of zero */
         dataBaseHelper.cleanNewMessagesConversation(receiverId);
-    }
 
+        /* Registramos el broadcast receiver que controla si hay un cambio en la conexion de Internet */
+        //  mNetworkReceiver = new CheckNetworkReceiver(new Handler());
+        mNetworkReceiver = new CheckNetworkReceiver();
+    }
 
     /* This function stores the item that will contain the number of unread messages and their position. In order to make changes to that item later */
     private void recordItemWithPendingMessages(String id, String message, String senderMessageId, int channel, String time, String date, int pendingMessages, int status) {
@@ -715,7 +754,7 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     /* Returns if the keyboard has appeared or been hidden since the last time */
-    public boolean hasKeyboardStateChanged() {
+    private boolean hasKeyboardStateChanged() {
         boolean hasChanged = false;
         int heightDiff = rootView.getRootView().getHeight() - rootView.getHeight();
         if (heightDiff != previousHeightDiff) {
@@ -726,7 +765,7 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     /* Function that loads the cursor data into the ArrayList */
-    public void loadItems(@NonNull Cursor c, int totalPending) {
+    private void loadItems(@NonNull Cursor c, int totalPending) {
         // This is to show the total of unread messages in a textView later. If it is the first message found with the value pending 1, then we enter the value of totalPending
         if (c.getInt(c.getColumnIndex("pending")) == 1 && firstPendingMessage) {
             firstPendingMessage = false;
@@ -766,7 +805,7 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     /* Function that depending on whether there is a lot of data, loads the data in batches */
-    public void fetchData(@NonNull Boolean firstLoad, final Cursor c) {
+    private void fetchData(@NonNull Boolean firstLoad, final Cursor c) {
         if (firstLoad) {
             Cursor cursorPending = dataBaseHelper.getAllPendingMessages(receiverId);
             totalPending = cursorPending.getCount();
@@ -853,7 +892,7 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     /* Save a message in the local database, update the adapter and send the message to the addressee */
-    public void sendMessage(String message, int channel, int pending) {
+    private void sendMessage(String message, int channel, int pending) {
         etMessage.setText("");
         // This is for you to leave a message date stamp as the first message
         if (!dataBaseHelper.thereIsConversation(receiverId)) {
@@ -898,9 +937,8 @@ public class ChatActivity extends AppCompatActivity {
         }
     }
 
-
     /* Returns if the keyboard has appeared or been hidden since the last time */
-    public void addMessage(String id, String message, String senderMessageId, int channel, String time, String date, int pendingMessages, int status) {
+    private void addMessage(String id, String message, String senderMessageId, int channel, String time, String date, int pendingMessages, int status) {
         newMessage = true; // Boolean to prevent tvDate animation appear
         alMessage.add(adapter.getItemCount(), new MessageItem(
                 id,
@@ -930,6 +968,74 @@ public class ChatActivity extends AppCompatActivity {
         } else {
             rvChat.scrollToPosition(adapter.getItemCount() - 1);
         }
+    }
+
+    /* Get the position of a specific id */
+    private int indexOfId(String id) {
+        for (int i = 0; i < alMessage.size(); i++) {
+            if (alMessage.get(i).getMessageId().equals(id)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void myRegisterReceiver(BroadcastReceiver mNetworkReceiver) {
+        IntentFilter filter = new IntentFilter();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            final Intent intent = new Intent(MY_CONNECTIVITY_CHANGE);
+            ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (connectivityManager != null) {
+                connectivityManager.registerNetworkCallback(new NetworkRequest.Builder().build(),
+                        new ConnectivityManager.NetworkCallback() {
+                            @Override
+                            public void onAvailable(@NonNull Network network) {
+                                sendBroadcast(intent);
+                            }
+
+                            @Override
+                            public void onLost(@NonNull Network network) {
+                                // sendBroadcast(intent);
+                            }
+                        });
+            }
+            filter.addAction(MY_CONNECTIVITY_CHANGE);
+        } else {
+            filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+        }
+        registerReceiver(mNetworkReceiver, filter);
+    }
+
+    /**
+     * INTERFACES
+     **/
+
+    @Override
+    public void updateMessagesNotSent(final ArrayList<String> alMessagesIds) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (!alMessagesIds.isEmpty()) {
+                    for (int i = 0; i < alMessagesIds.size(); i++) {
+                        int position = indexOfId(alMessagesIds.get(i));
+                        if (position != -1) {
+                            MessageItem messageItem = new MessageItem(
+                                    alMessage.get(position).getMessageId(),
+                                    alMessage.get(position).getMessage(),
+                                    alMessage.get(position).getSenderMessageId(),
+                                    alMessage.get(position).getMessageChannel(),
+                                    alMessage.get(position).getMessageTime(),
+                                    alMessage.get(position).getDate(),
+                                    alMessage.get(position).getPendingMessages(),
+                                    SENT
+                            );
+                            alMessage.set(position, messageItem);
+                            adapter.notifyItemChanged(position, SENT);
+                        }
+                    }
+                }
+            }
+        });
     }
 }
 

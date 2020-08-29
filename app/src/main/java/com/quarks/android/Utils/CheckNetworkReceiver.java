@@ -4,8 +4,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.os.Handler;
 import android.util.Log;
 
+import com.quarks.android.ChatActivity;
 import com.quarks.android.Interfaces.MessagesNotSentInterface;
 import com.quarks.android.R;
 
@@ -14,6 +16,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 
 
 import io.socket.client.Ack;
@@ -21,32 +24,36 @@ import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
 
-public class checkNetworkReceiver extends BroadcastReceiver {
+public class CheckNetworkReceiver extends BroadcastReceiver {
 
     private DataBaseHelper dataBaseHelper;
     private Socket socket;
     private Context mContext;
     private JSONObject jsonObject;
     private MessagesNotSentInterface dtInterface;
-
+    private ArrayList<String> alMessagesIds;
 
     @Override
     public void onReceive(Context context, final Intent intent) {
         dtInterface = (MessagesNotSentInterface) context;
+        mContext = context;
 
         if (Functions.isNetworkAvailable(context)) {
             dataBaseHelper = new DataBaseHelper(context);
-            Cursor c = dataBaseHelper.getMessagesNotSent();
-            mContext = context;
-            jsonObject = getMessagesNotSent(context, c);
+            Cursor cursor = dataBaseHelper.getMessagesNotSent();
+            if (cursor.getCount() > 0) {
+                jsonObject = getMessagesNotSent(context, cursor);
+                cursor.moveToFirst();
+                alMessagesIds = getMessagesIds(cursor);
 
-            try {
-                socket = IO.socket(context.getResources().getString(R.string.url_chat));
-            } catch (URISyntaxException e) {
-                Log.d("Error", "Error socketURL: " + e.toString());
+                try {
+                    socket = IO.socket(context.getResources().getString(R.string.url_chat));
+                } catch (URISyntaxException e) {
+                    Log.d("Error", "Error socketURL: " + e.toString());
+                }
+                socket.connect();
+                socket.on("connected", connected);
             }
-            socket.connect();
-            socket.on("connected", connected);
         }
     }
 
@@ -60,11 +67,9 @@ public class checkNetworkReceiver extends BroadcastReceiver {
                     @Override
                     public void call(Object... args) {
                         //JSONObject success = (JSONObject) args[0];
-                        //
-                        dataBaseHelper.updateMessagesNotSent();
-                        //
-                        dtInterface.updateMessagesNotSent();
-                        /* Disconnecting the socket */
+                        dataBaseHelper.updateMessagesNotSent(); // Procedemos a actualizar el estado de los registros de la base de datos a enviados. Es decir, con valor de 1.
+                        dtInterface.updateMessagesNotSent(alMessagesIds); // Comunicamos al ChatActivity la actulizacion de los mensajes no enviados para que los actualice en enviados.
+                        // Disconnecting the socket
                         socket.emit("disconnect", "");
                         socket.disconnect();
                     }
@@ -73,15 +78,25 @@ public class checkNetworkReceiver extends BroadcastReceiver {
         }
     };
 
+    /* Funcion que retorna una lista de los id de los mensajes no enviados */
+    private ArrayList<String> getMessagesIds(Cursor c) {
+        ArrayList<String> alMessagesIds = new ArrayList<>();
+        for (int i = 0; i < c.getCount(); i++) {
+            c.moveToPosition(i);
+            alMessagesIds.add(c.getString(c.getColumnIndex("id")));
+        }
+        return alMessagesIds;
+    }
 
-    private JSONObject getMessagesNotSent(Context context, Cursor c){
+    /* Funcion que crea un JSONObject con los mensajes no enviados */
+    private JSONObject getMessagesNotSent(Context context, Cursor c) {
         JSONObject jsonObject = new JSONObject();
         try {
             jsonObject.put("senderId", Preferences.getUserId(context));
             jsonObject.put("senderUsername", Preferences.getUserName(context));
 
             JSONArray jsonArrayChats = new JSONArray();
-            while(c.moveToNext()){
+            while (c.moveToNext()) {
                 String userId = c.getString(c.getColumnIndex("sender_id"));
 
                 if (c.isFirst()) {
@@ -131,6 +146,7 @@ public class checkNetworkReceiver extends BroadcastReceiver {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-       return jsonObject;
+        System.out.println(jsonObject);
+        return jsonObject;
     }
 }

@@ -72,6 +72,7 @@
                 android:textSize="15sp" />
 
             <LinearLayout
+                android:animateLayoutChanges="true"
                 android:id="@+id/lyTimeAndCheck"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -87,6 +88,7 @@
                     android:textSize="12.5sp" />
 
                 <ImageView
+
                     android:id="@+id/ivTick"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -94,6 +96,7 @@
                     android:paddingStart="4dp"
                     android:visibility="visible" />
 <!--                android:src="@drawable/ic_check"-->
+
 
             </LinearLayout>
 

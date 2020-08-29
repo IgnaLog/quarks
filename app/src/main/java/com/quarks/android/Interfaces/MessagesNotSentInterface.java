@@ -1,5 +1,9 @@
 package com.quarks.android.Interfaces;
 
+import android.database.Cursor;
+
+import java.util.ArrayList;
+
 public interface MessagesNotSentInterface {
-    void updateMessagesNotSent();
+    void updateMessagesNotSent(ArrayList<String> alMessagesIds);
 }

@@ -7,17 +7,24 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
+import android.widget.ImageSwitcher;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.ViewSwitcher;
 
 import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.quarks.android.ChatActivity;
+import com.quarks.android.Items.ConversationItem;
 import com.quarks.android.Items.MessageItem;
 import com.quarks.android.R;
 import com.quarks.android.Utils.DataBaseHelper;
@@ -25,6 +32,7 @@ import com.quarks.android.Utils.Functions;
 import com.quarks.android.Utils.MessageBubbleLayout;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.MessagesViewHolder> {
 
@@ -56,11 +64,41 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
     @Override
     public MessagesViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(context).inflate(R.layout.item_message, parent, false);
+
         return new MessagesViewHolder(v);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull MessagesViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull final MessagesViewHolder holder, int position, List<Object> payloads) {
+        if (payloads.isEmpty()) {
+            // Perform a full update
+            onBindViewHolder(holder, position);
+        } else {
+            // Perform a partial update
+            if (payloads.get(0) instanceof Integer) {
+                Integer status = (Integer) payloads.get(0);
+                switch (status) {
+                    case STATELESS:
+                        holder.ivTick.setImageResource(R.drawable.ic_check);
+                    case NOT_SENT:
+                        holder.ivTick.setImageResource(R.drawable.ic_clock);
+                        break;
+                    case SENT:
+                        holder.ivTick.setImageResource(R.drawable.ic_check);
+                        break;
+                    case RECEIVED:
+                        holder.ivTick.setImageResource(R.drawable.ic_double_check);
+                        break;
+                    case VIEWED:
+                        holder.ivTick.setColorFilter(R.color.bg_blue_2);
+                        break;
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull final MessagesViewHolder holder, final int position) {
 
         /** DESIGN */
 
@@ -70,14 +108,24 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
             holder.ivTick.setVisibility(View.VISIBLE);
             if (position > 0) {
                 if (listMessage.get(position - 1).getMessageChannel() == 1) {
-                    stylizeBubble(holder, lyMessageParams, BUBBLE_OUTGOING);
+                    if(!listMessage.get(position).getDate().equalsIgnoreCase(listMessage.get(position - 1).getDate())){
+                        stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_OUTGOING);
+                    }else{
+                        stylizeBubble(holder, lyMessageParams, BUBBLE_OUTGOING);
+                    }
                 } else {
                     stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_OUTGOING);
                 }
             } else {
-                int channel = dataBaseHelper.getPreviousMessage(senderId, listMessage.get(position).getMessageId());
+                Cursor cursor = dataBaseHelper.getPreviousMessage(senderId, listMessage.get(position).getMessageId());
+                int channel = getChannelFromCursor(cursor);
+                String date = getDateFromCursor(cursor);
                 if (channel == 1) {
-                    stylizeBubble(holder, lyMessageParams, BUBBLE_OUTGOING);
+                    if(!date.equals("") && !listMessage.get(position).getDate().equalsIgnoreCase(date)){
+                        stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_OUTGOING);
+                    }else{
+                        stylizeBubble(holder, lyMessageParams, BUBBLE_OUTGOING);
+                    }
                 } else {
                     stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_OUTGOING);
                 }
@@ -87,14 +135,24 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
             holder.ivTick.setVisibility(View.GONE);
             if (position > 0) {
                 if (listMessage.get(position - 1).getMessageChannel() == 2) {
-                    stylizeBubble(holder, lyMessageParams, BUBBLE_INCOMING);
+                    if(!listMessage.get(position).getDate().equalsIgnoreCase(listMessage.get(position - 1).getDate())){
+                        stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_INCOMING);
+                    }else{
+                        stylizeBubble(holder, lyMessageParams, BUBBLE_INCOMING);
+                    }
                 } else {
                     stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_INCOMING);
                 }
             } else {
-                int channel = dataBaseHelper.getPreviousMessage(senderId, listMessage.get(position).getMessageId());
+                Cursor cursor = dataBaseHelper.getPreviousMessage(senderId, listMessage.get(position).getMessageId());
+                int channel = getChannelFromCursor(cursor);
+                String date = getDateFromCursor(cursor);
                 if (channel == 2) {
-                    stylizeBubble(holder, lyMessageParams, BUBBLE_INCOMING);
+                    if(!date.equals("") && !listMessage.get(position).getDate().equalsIgnoreCase(date)){
+                        stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_INCOMING);
+                    }else{
+                        stylizeBubble(holder, lyMessageParams, BUBBLE_INCOMING);
+                    }
                 } else {
                     stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_INCOMING);
                 }
@@ -139,21 +197,44 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
         holder.tvTime.setText(listMessage.get(position).getMessageTime());
         switch (listMessage.get(position).getStatus()) {
             case STATELESS:
-                holder.ivTick.setImageDrawable(context.getResources().getDrawable(R.drawable.ic_check, context.getApplicationContext().getTheme()));
+                holder.ivTick.setImageResource(R.drawable.ic_check);
             case NOT_SENT:
-                holder.ivTick.setImageDrawable(context.getResources().getDrawable(R.drawable.ic_clock, context.getApplicationContext().getTheme()));;
+                holder.ivTick.setImageResource(R.drawable.ic_clock);
                 break;
             case SENT:
-                holder.ivTick.setImageDrawable(context.getResources().getDrawable(R.drawable.ic_check, context.getApplicationContext().getTheme()));
+                holder.ivTick.setImageResource(R.drawable.ic_check);
                 break;
             case RECEIVED:
-                holder.ivTick.setImageDrawable(context.getResources().getDrawable(R.drawable.ic_double_check, context.getApplicationContext().getTheme()));
+                holder.ivTick.setImageResource(R.drawable.ic_double_check);
                 break;
             case VIEWED:
-                holder.ivTick.setImageDrawable(context.getResources().getDrawable(R.drawable.ic_viewed, context.getApplicationContext().getTheme()));
+                holder.ivTick.setImageResource(R.drawable.ic_viewed);
                 break;
         }
+    }
 
+    private String getDateFromCursor(Cursor c){
+        String date = "";
+        if (c != null) {
+            while (!c.isAfterLast()) {
+                c.moveToFirst();
+                date = c.getString(c.getColumnIndex("date"));
+                c.close();
+            }
+        }
+        return date;
+    }
+
+    private int getChannelFromCursor(Cursor c){
+        int channel = -1;
+        if (c != null) {
+            while (!c.isAfterLast()) {
+                c.moveToFirst();
+                channel = c.getInt(c.getColumnIndex("channel"));
+                c.close();
+            }
+        }
+        return channel;
     }
 
     private void stylizeBubble(MessagesViewHolder holder, LinearLayout.LayoutParams lyMessageParams, int typeBubble) {

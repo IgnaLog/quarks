@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,11 +25,12 @@ import com.quarks.android.CustomViews.LoadingWheel;
 import com.quarks.android.Interfaces.ClickConversationInterface;
 import com.quarks.android.Interfaces.MessagesNotSentInterface;
 import com.quarks.android.Items.ConversationItem;
+import com.quarks.android.Utils.CheckNetworkReceiver;
 import com.quarks.android.Utils.DataBaseHelper;
 import com.quarks.android.Utils.Functions;
 import com.quarks.android.Utils.Preferences;
 import com.quarks.android.Utils.SocketHandler;
-import com.quarks.android.Utils.checkNetworkReceiver;
+
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -59,7 +59,6 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
     public static ConversationsAdapter adapter;
     private ArrayList<ConversationItem> alConversations = new ArrayList<ConversationItem>();
 
-    private SQLiteDatabase db;
     private DataBaseHelper dataBaseHelper;
     private Cursor cursor;
 
@@ -75,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
     private static final int PENDING = 1;
 
     private static final int LAUNCH_SECOND_ACTIVITY = 1;
-    private boolean isOnPauseFromConversationClick = false;
+    private boolean isOnPauseFromConversationClick = false; // Se ejecuta onPause debido a que pulsamos en una conversacion que nos abre un activity nueva
 
     private static final int STATELESS = -1;
 //    private static final int NOT_SENT = 0;
@@ -96,10 +95,6 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
         rvConversations = findViewById(R.id.rvConversations);
         lyCiruclarProgressBar = findViewById(R.id.lyCiruclarProgressBar);
 
-        mNetworkReceiver = new checkNetworkReceiver();
-        registerReceiver(mNetworkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
-
-
         dataBaseHelper = new DataBaseHelper(context);
         linearLayoutManager = new LinearLayoutManager(context);
 
@@ -107,6 +102,8 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
 
         userId = Preferences.getUserId(context);
         username = Preferences.getUserName(context);
+
+        mNetworkReceiver = new CheckNetworkReceiver();
 
         /**  SOCKETS CONNECTIONS  **/
 
@@ -366,6 +363,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
     @Override
     protected void onResume() {
         super.onResume();
+        registerReceiver(mNetworkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
         isOnPauseFromConversationClick = false;
 
         if (adapter != null) {
@@ -390,6 +388,10 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
     @Override
     protected void onPause() {
         super.onPause();
+        // Suprimimos el broadcastReceiver que controla si hay un cambio en la conexion de internet
+        unregisterReceiver(mNetworkReceiver);
+
+        // Si no procede de clickar una conversacion que nos lleva a un activity nueva. Desconectamos el socket
         if (!isOnPauseFromConversationClick) {
             socket.emit("disconnect", "");
             socket.disconnect();
@@ -400,8 +402,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
     protected void onDestroy() {
         super.onDestroy();
 
-        unregisterReceiver(mNetworkReceiver);
-
+        // Si no procede de clickar una conversacion que nos lleva a un activity nueva. Desconectamos el socket
         if (!isOnPauseFromConversationClick) {
             socket.emit("disconnect", "");
             socket.disconnect();
@@ -573,7 +574,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
     }
 
     @Override
-    public void updateMessagesNotSent() {
-        adapter.notifyDataSetChanged();
+    public void updateMessagesNotSent(ArrayList<String> alMessagesIds) {
+
     }
 }
