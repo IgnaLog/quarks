@@ -8,6 +8,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkRequest;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -83,6 +86,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
 //    private static final int VIEWED = 3;
 
     private BroadcastReceiver mNetworkReceiver;
+    private static final String MY_CONNECTIVITY_CHANGE = "com.quarks.android.connectivity.change";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
             }
             socket.connect();
             socket.on("connected", connected);
+            socket.on(Socket.EVENT_RECONNECT, reconnect);
             socket.on("all-pending-messages", getPendingMessages);
             socket.on("send-message", listeningMessages);
             socket.on("typing", onTyping);
@@ -124,6 +129,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
             socket = SocketHandler.getSocket();
             socket.off();
             socket.on("connected", connected);
+            socket.on(Socket.EVENT_RECONNECT, reconnect);
             socket.on("all-pending-messages", getPendingMessages);
             socket.on("send-message", listeningMessages);
             socket.on("typing", onTyping);
@@ -193,6 +199,20 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                         e.printStackTrace();
                     }
                     socket.emit("add-user", jsonObjectData);
+                }
+            });
+        }
+    };
+
+    /* We have been reconnected, so we launch the broadcast to send the unsent messages */
+    private Emitter.Listener reconnect = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Intent intent = new Intent(MY_CONNECTIVITY_CHANGE);
+                    sendBroadcast(intent);
                 }
             });
         }
@@ -352,6 +372,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                 socket = SocketHandler.getSocket();
                 socket.off();
                 socket.on("connected", connected);
+                socket.on(Socket.EVENT_RECONNECT, reconnect);
                 socket.on("all-pending-messages", getPendingMessages);
                 socket.on("send-message", listeningMessages);
                 socket.on("typing", onTyping);
@@ -363,7 +384,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
     @Override
     protected void onResume() {
         super.onResume();
-        registerReceiver(mNetworkReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+        myRegisterReceiver(mNetworkReceiver);
         isOnPauseFromConversationClick = false;
 
         if (adapter != null) {
@@ -562,6 +583,32 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                 }
             }, 200); // It is important to put a delay so that when you scroll very fast it does not get blocked
         }
+    }
+
+    private void myRegisterReceiver(BroadcastReceiver mNetworkReceiver) {
+        IntentFilter filter = new IntentFilter();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            final Intent intent = new Intent(MY_CONNECTIVITY_CHANGE);
+            ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (connectivityManager != null) {
+                connectivityManager.registerNetworkCallback(new NetworkRequest.Builder().build(),
+                        new ConnectivityManager.NetworkCallback() {
+                            @Override
+                            public void onAvailable(@NonNull Network network) {
+                                sendBroadcast(intent);
+                            }
+
+                            @Override
+                            public void onLost(@NonNull Network network) {
+                                // sendBroadcast(intent);
+                            }
+                        });
+            }
+            filter.addAction(MY_CONNECTIVITY_CHANGE);
+        } else {
+            filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+        }
+        registerReceiver(mNetworkReceiver, filter);
     }
 
     /**

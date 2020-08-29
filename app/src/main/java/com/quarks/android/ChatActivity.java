@@ -129,7 +129,6 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
 
     private BroadcastReceiver mNetworkReceiver;
     private static final String MY_CONNECTIVITY_CHANGE = "com.quarks.android.connectivity.change";
-    // private static final String MY_SOCKET_CONNECTIVITY_CHANGE = "MY_SOCKET_CONNECTIVITY_CHANGE";
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -417,7 +416,7 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
         }
     };
 
-    /* We have been reconnected, so we send our user data */
+    /* We have been reconnected, so we launch the broadcast to send the unsent messages */
     private Emitter.Listener reconnect = new Emitter.Listener() {
         @Override
         public void call(final Object... args) {
