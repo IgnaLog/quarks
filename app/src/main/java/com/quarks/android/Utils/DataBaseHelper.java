@@ -2,10 +2,12 @@ package com.quarks.android.Utils;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -135,15 +137,26 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return cursor;
     }
 
+
+    public void updateMessagesStatus(ArrayList<String> ids, ArrayList<Integer> status){
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cvMessage = new ContentValues();
+        for (int i = 0; i < ids.size(); i++) {
+            int id = Integer.parseInt(ids.get(i));
+            cvMessage.put(COLUMN_STATUS, status.get(i));
+            db.update(TABLE_MESSAGES, cvMessage,COLUMN_ID + "=" + id, null);
+        }
+    }
+
     /* Function that updates unsent messages to sent */
     public void updateMessagesNotSent() {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cvMessage = new ContentValues();
         cvMessage.put(COLUMN_STATUS, 1);
-        db.update(TABLE_MESSAGES, cvMessage,"", null);
+        db.update(TABLE_MESSAGES, cvMessage, "", null);
     }
 
-    public Cursor getPreviousMessage(String senderId, String id){
+    public Cursor getPreviousMessage(String senderId, String id) {
         SQLiteDatabase db = this.getReadableDatabase();
 
         String sql = "SELECT * FROM " + TABLE_MESSAGES + " WHERE " + COLUMN_SENDER_ID + "= '" + senderId + "' " +
@@ -229,7 +242,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return values;
     }
 
-    public void updateConversations(String senderId, String senderUsername, String message, String dateTime, int numNewMessages){
+    public void updateConversations(String senderId, String senderUsername, String message, String dateTime, int numNewMessages) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cvConversation = new ContentValues();
 
@@ -268,11 +281,11 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return totalNewMessages;
     }
 
-    public void cleanNewMessagesConversation(String senderId){
+    public void cleanNewMessagesConversation(String senderId) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cvConversation = new ContentValues();
 
-        if(thereIsConversation(senderId)){
+        if (thereIsConversation(senderId)) {
             cvConversation.put(COLUMN_CONVER_NEW_MESSAGES, 0);
             db.update(TABLE_CONVERSATIONS, cvConversation, COLUMN_CONVER_SENDER_ID + "='" + senderId + "'", null);
         }

@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.socket.client.Ack;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
@@ -121,6 +122,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
             socket.on("connected", connected);
             socket.on(Socket.EVENT_RECONNECT, reconnect);
             socket.on("all-pending-messages", getPendingMessages);
+            socket.on("change-message-statuses", getMessageStatuses);
             socket.on("send-message", listeningMessages);
             socket.on("typing", onTyping);
             socket.on("stop-typing", onStopTyping);
@@ -131,6 +133,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
             socket.on("connected", connected);
             socket.on(Socket.EVENT_RECONNECT, reconnect);
             socket.on("all-pending-messages", getPendingMessages);
+            socket.on("change-message-statuses", getMessageStatuses);
             socket.on("send-message", listeningMessages);
             socket.on("typing", onTyping);
             socket.on("stop-typing", onStopTyping);
@@ -198,7 +201,12 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
-                    socket.emit("add-user", jsonObjectData);
+                    socket.emit("add-user", jsonObjectData, new Ack() {
+                        @Override
+                        public void call(Object... args) {
+
+                        }
+                    });
                 }
             });
         }
@@ -226,6 +234,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                 @Override
                 public void run() {
                     JSONArray pendingMessages = (JSONArray) args[0];
+                    Ack ack = (Ack) args[args.length - 1];
                     if (pendingMessages != null) {
                         try {
                             JSONObject jsonObject = pendingMessages.getJSONObject(0);
@@ -279,6 +288,13 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                             e.printStackTrace();
                         }
                     }
+                    JSONObject jsonObjectSuccess = new JSONObject();
+                    try {
+                        jsonObjectSuccess.put("success", 1);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    ack.call(jsonObjectSuccess);
                 }
             });
         }
@@ -315,6 +331,31 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                     dataBaseHelper.updateConversations(senderId, senderUsername, message, dateTime, 1);
 
                     reorganizeConversation(senderId, message, dateTime, 1, 0);
+                }
+            });
+        }
+    };
+
+    /* We receive message statuses  */
+    private Emitter.Listener getMessageStatuses = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                  //  JSONObject data = (JSONObject) args[0];
+                    Ack ack = (Ack) args[args.length -1];
+
+
+
+
+                    JSONObject jsonObjectSuccess = new JSONObject();
+                    try {
+                        jsonObjectSuccess.put("success", 1);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    ack.call(jsonObjectSuccess);
                 }
             });
         }
@@ -374,6 +415,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                 socket.on("connected", connected);
                 socket.on(Socket.EVENT_RECONNECT, reconnect);
                 socket.on("all-pending-messages", getPendingMessages);
+                socket.on("change-message-statuses", getMessageStatuses);
                 socket.on("send-message", listeningMessages);
                 socket.on("typing", onTyping);
                 socket.on("stop-typing", onStopTyping);

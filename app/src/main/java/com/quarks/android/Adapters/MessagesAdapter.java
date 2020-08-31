@@ -108,7 +108,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
             holder.ivTick.setVisibility(View.VISIBLE);
             if (position > 0) {
                 if (listMessage.get(position - 1).getMessageChannel() == 1) {
-                    if(!listMessage.get(position).getDate().equalsIgnoreCase(listMessage.get(position - 1).getDate())){
+                    if(!listMessage.get(position).getDate().equalsIgnoreCase(listMessage.get(position - 1).getDate()) || listMessage.get(position).getPendingMessages() > 0){
                         stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_OUTGOING);
                     }else{
                         stylizeBubble(holder, lyMessageParams, BUBBLE_OUTGOING);
@@ -121,7 +121,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
                 int channel = getChannelFromCursor(cursor);
                 String date = getDateFromCursor(cursor);
                 if (channel == 1) {
-                    if(!date.equals("") && !listMessage.get(position).getDate().equalsIgnoreCase(date)){
+                    if(!date.equals("") && !listMessage.get(position).getDate().equalsIgnoreCase(date) || listMessage.get(position).getPendingMessages() > 0){
                         stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_OUTGOING);
                     }else{
                         stylizeBubble(holder, lyMessageParams, BUBBLE_OUTGOING);
@@ -135,7 +135,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
             holder.ivTick.setVisibility(View.GONE);
             if (position > 0) {
                 if (listMessage.get(position - 1).getMessageChannel() == 2) {
-                    if(!listMessage.get(position).getDate().equalsIgnoreCase(listMessage.get(position - 1).getDate())){
+                    if(!listMessage.get(position).getDate().equalsIgnoreCase(listMessage.get(position - 1).getDate()) || listMessage.get(position).getPendingMessages() > 0){
                         stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_INCOMING);
                     }else{
                         stylizeBubble(holder, lyMessageParams, BUBBLE_INCOMING);
@@ -148,7 +148,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
                 int channel = getChannelFromCursor(cursor);
                 String date = getDateFromCursor(cursor);
                 if (channel == 2) {
-                    if(!date.equals("") && !listMessage.get(position).getDate().equalsIgnoreCase(date)){
+                    if(!date.equals("") && !listMessage.get(position).getDate().equalsIgnoreCase(date) || listMessage.get(position).getPendingMessages() > 0){
                         stylizeBubble(holder, lyMessageParams, FIRST_BUBBLE_INCOMING);
                     }else{
                         stylizeBubble(holder, lyMessageParams, BUBBLE_INCOMING);

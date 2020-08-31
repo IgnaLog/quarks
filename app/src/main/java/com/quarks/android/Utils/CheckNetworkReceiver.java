@@ -66,7 +66,6 @@ public class CheckNetworkReceiver extends BroadcastReceiver {
                 socket.emit("messages-not-sent", jsonObject, new Ack() {
                     @Override
                     public void call(Object... args) {
-                        //JSONObject success = (JSONObject) args[0];
                         dataBaseHelper.updateMessagesNotSent(); // Procedemos a actualizar el estado de los registros de la base de datos a enviados. Es decir, con valor de 1.
                         dtInterface.updateMessagesNotSent(alMessagesIds); // Comunicamos al ChatActivity la actulizacion de los mensajes no enviados para que los actualice en enviados.
                         // Disconnecting the socket
