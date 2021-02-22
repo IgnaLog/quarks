@@ -118,6 +118,7 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
 
     private static int totalPending = 0;
     private static final int NOT_PENDING = 0;
+    private static final int PENDING = 1;
     private boolean firstPendingMessage = true;
 
     public boolean isBackPressed = false;
@@ -126,10 +127,12 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
     private static final int NOT_SENT = 0;
     private static final int SENT = 1;
     private static final int RECEIVED = 2;
-//    private static final int VIEWED = 3;
+    private static final int VIEWED = 3;
 
     private BroadcastReceiver mNetworkReceiver;
     private static final String MY_CONNECTIVITY_CHANGE = "com.quarks.android.connectivity.change";
+
+    private JSONObject joMessagesViewed = new JSONObject();
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -145,6 +148,7 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
 
         /*  Retrieve previous messages from the local database */
         cursor = dataBaseHelper.getAllMessages(receiverId);
+        Cursor cursorPending = dataBaseHelper.getAllPendingMessages(receiverId);
         fetchData(true, cursor);
 
         /**  SOCKETS CONNECTIONS  **/
@@ -175,6 +179,33 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
             socket.on("typing", onTyping);
             socket.on("stop-typing", onStopTyping);
         }
+
+        /**  DATA VIEWED  **/
+
+        // we send to the other user that we have read the messages. We recover the id of the messages.
+        try {
+            // My user
+            joMessagesViewed.put("userId", userId);
+            joMessagesViewed.put("username", username);
+            // The person with whom I communicate, this is util for receive pending messages in the server.
+            joMessagesViewed.put("receiverId", receiverId);
+            joMessagesViewed.put("receiverUsername", receiverUsername);
+            JSONArray jaMessagesRead = new JSONArray();
+            while (cursorPending.moveToNext()) {
+                JSONObject joMessageRead = new JSONObject();
+                joMessageRead.put("message_id", cursorPending.getString(cursorPending.getColumnIndex("sender_message_id")));
+                joMessageRead.put("status", VIEWED);
+                jaMessagesRead.put(joMessageRead);
+            }
+            joMessagesViewed.put("messagesRead", jaMessagesRead);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        if (cursorPending.getCount() > 0) {
+            socket.emit("messages-viewed", joMessagesViewed);
+        }
+        dataBaseHelper.updatePendingMessages(receiverId); // We leave the pending messages in te local data base with the value of zero to mark them as read
+
 
         /**  LISTENERS  **/
 
@@ -299,8 +330,13 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
                 firstVisibleItem = linearLayoutManager.findFirstVisibleItemPosition();
                 firstCompletelyVisibleItem = linearLayoutManager.findFirstCompletelyVisibleItemPosition();
                 View view = linearLayoutManager.findViewByPosition(firstVisibleItem);
-                TextView date = view.findViewById(R.id.tvDate);
-                tvDate.setText(date.getText().toString());
+                TextView date = null;
+                if (view != null) {
+                    date = view.findViewById(R.id.tvDate);
+                }
+                if (date != null) {
+                    tvDate.setText(date.getText().toString());
+                }
 
                 if (oldVisibleItem != firstVisibleItem && !newMessage) {
                     oldVisibleItem = firstVisibleItem;
@@ -410,16 +446,12 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
                         // The person with whom I communicate, this is util for receive pending messages in the server.
                         jsonObjectData.put("receiverId", receiverId);
                         jsonObjectData.put("receiverUsername", receiverUsername);
+                        jsonObjectData.put("fromConnected", 1);
                         jsonObjectData.put("activity", "chatActivity");
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
-                    socket.emit("add-user", jsonObjectData, new Ack() {
-                        @Override
-                        public void call(Object... args) {
-
-                        }
-                    });
+                    socket.emit("add-user", jsonObjectData);
                 }
             });
         }
@@ -493,6 +525,7 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
                                     recordItemWithPendingMessages(id, message, senderMessageId, channel, formatTime(dateTime, context), formatDate(dateTime, context), pendingMessages, STATELESS);
                                 }
                             }
+
                             // We updated the conversations table to use it in the conversations activity
                             dataBaseHelper.updateConversations(receiverId, receiverUsername, lastMessageConversation, lastTimeConversation, 0);
 
@@ -500,8 +533,6 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
                             if (totalPending == 0) {
                                 linearLayoutManager.scrollToPositionWithOffset(adapter.getItemCount() - messages.length(), 280);
                             }
-
-
                         }
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -529,41 +560,63 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
                     Ack ack = (Ack) args[args.length - 1];
                     String message = "";
                     String senderMessageId = "";
+                    String senderId = "";
+                    String senderUsername = "";
                     int channel = 2;
 
                     try {
                         message = data.getString("content");
                         senderMessageId = data.getString("contentId");
+                        senderId = data.getString("senderId");
+                        senderUsername = data.getString("senderUsername");
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
 
-                    /* If it is the beginning of the conversation, we mark that it's the last item, so that the adapter shows the date of the first message */
-                    if (!dataBaseHelper.thereIsConversation(receiverId)) {
-                        adapter.isLastItem();
+                    if (senderId.equals(receiverId)) {
+                        /* If it is the beginning of the conversation, we mark that it's the last item, so that the adapter shows the date of the first message */
+                        if (!dataBaseHelper.thereIsConversation(receiverId)) {
+                            adapter.isLastItem();
+                        }
+
+                        /* We save the message in the local database and collect the date and the message id to compose a new item */
+                        values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, senderMessageId, channel, "", NOT_PENDING, STATELESS); // We store the message into the local data base and we obtain the id and time from the record stored
+                        String id = values.get("id");
+                        String dateTime = values.get("time"); // Comes from local database when saving the message
+
+                        // We updated the conversations table to use it in the conversations activity
+                        dataBaseHelper.updateConversations(receiverId, receiverUsername, message, dateTime, 0);
+
+                        // We add the message
+                        addMessage(id, message, senderMessageId, channel, formatTime(dateTime, context), formatDate(dateTime, context), 0, STATELESS); // We add a new item to the adapter
+
+                        // We add a new unread message
+                        updateItemWithPendingMessages(1);
+
+                        JSONObject jsonObjectSuccess = new JSONObject();
+                        try {
+                            jsonObjectSuccess.put("activity", "ChatActivity");
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        ack.call(jsonObjectSuccess);
+                    } else {
+                        values = dataBaseHelper.storeMessage(senderId, senderUsername, message, senderMessageId, channel, "", PENDING, STATELESS); // We store the message into the local data base and we obtain the id and time from the record stored
+                        String dateTime = values.get("time"); // Comes from local database when saving the message
+
+                        // We updated the conversations table to use it in the conversations activity
+                        dataBaseHelper.updateConversations(senderId, senderUsername, message, dateTime, 1);
+
+                        JSONObject jsonObjectSuccess = new JSONObject();
+                        try {
+                            jsonObjectSuccess.put("activity", "ConversationsActivity");
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        ack.call(jsonObjectSuccess);
+
+                        FCM.sendMessageNotification(context, senderId, senderUsername, message, FCM.mapMessages);
                     }
-
-                    /* We save the message in the local database and collect the date and the message id to compose a new item */
-                    values = dataBaseHelper.storeMessage(receiverId, receiverUsername, message, senderMessageId, channel, "", NOT_PENDING, STATELESS); // We store the message into the local data base and we obtain the id and time from the record stored
-                    String id = values.get("id");
-                    String dateTime = values.get("time"); // Comes from local database when saving the message
-
-                    // We updated the conversations table to use it in the conversations activity
-                    dataBaseHelper.updateConversations(receiverId, receiverUsername, message, dateTime, 0);
-
-                    // We add the message
-                    addMessage(id, message, senderMessageId, channel, formatTime(dateTime, context), formatDate(dateTime, context), 0, STATELESS); // We add a new item to the adapter
-
-                    // We add a new unread message
-                    updateItemWithPendingMessages(1);
-
-                    JSONObject jsonObjectSuccess = new JSONObject();
-                    try {
-                        jsonObjectSuccess.put("success", 1);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                    ack.call(jsonObjectSuccess);
                 }
             });
         }
@@ -622,7 +675,15 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    tvTyping.setVisibility(View.VISIBLE);
+                    JSONObject jsonObject = (JSONObject) args[0];
+                    try {
+                        String senderId = jsonObject.getString("senderId");
+                        if(senderId.equals(receiverId)){
+                            tvTyping.setVisibility(View.VISIBLE);
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
                 }
             });
         }
@@ -635,7 +696,15 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    tvTyping.setVisibility(View.GONE);
+                    JSONObject jsonObject = (JSONObject) args[0];
+                    try {
+                        String senderId = jsonObject.getString("senderId");
+                        if(senderId.equals(receiverId)){
+                            tvTyping.setVisibility(View.GONE);
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
                 }
             });
         }
@@ -775,10 +844,12 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
         /* We get our username, userId and the receiverId receiverUsername to whom we are going to send the messages */
         userId = Preferences.getUserId(context);
         username = Preferences.getUserName(context);
-//        receiverId = "5f0ef2cf966d941750ac19ed";
-//        receiverUsername = "kevin"; // We capture the username and id of the previous activity
+//        receiverId = "5f0845e61407d92ab09b4240";
+//        receiverUsername = "nacho";
+        // We capture the username and id of the previous activity
         receiverId = getIntent().getStringExtra("receiverId");
-        receiverUsername = getIntent().getStringExtra("receiverUsername"); // We capture the username and id of the previous activity
+        receiverUsername = getIntent().getStringExtra("receiverUsername");
+        // We capture the username and id of the previous activity
 
         /* We initialize the recyclerview with its adapter */
         linearLayoutManager = new LinearLayoutManager(this);
@@ -883,6 +954,7 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
         if (firstLoad) {
             Cursor cursorPending = dataBaseHelper.getAllPendingMessages(receiverId);
             totalPending = cursorPending.getCount();
+            cursorPending.close();
             if (totalPending >= limitItemsToScroll) {
                 limitItemsToScroll = totalPending + 50;
                 itemsToShow = totalPending + 50;
@@ -907,7 +979,7 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
             if (totalPending > 0) {
                 // We move the RecyclerView to the message of pending messages
                 linearLayoutManager.scrollToPositionWithOffset(adapter.getItemCount() - totalPending, 280);
-                dataBaseHelper.updatePendingMessages(receiverId); // We leave the pending messages in te local data base with the value of zero to mark them as read
+
             } else {
                 rvChat.scrollToPosition(adapter.getItemCount() - 1);
             }
@@ -918,7 +990,7 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
                 public void run() {
                     if (indexItems - nextItemsToShow <= 0) { // We have reached the end of batch loading
                         c.moveToFirst();
-                        ArrayList<MessageItem> alMessageAux = new ArrayList<MessageItem>();
+                        ArrayList<MessageItem> alMessageAux = new ArrayList<>();
                         for (int i = 0; i < indexItems; i++) {
                             if (i == indexItems - 1) {
                                 adapter.isLastItem();
@@ -941,7 +1013,7 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
                         adapter.notifyItemRangeInserted(0, alMessageAux.size());
                     } else {  // We continue loading batches of items
                         c.moveToPosition(indexItems - nextItemsToShow);
-                        ArrayList<MessageItem> alMessageAux = new ArrayList<MessageItem>();
+                        ArrayList<MessageItem> alMessageAux = new ArrayList<>();
                         for (int i = 0; i < nextItemsToShow; i++) {
                             alMessageAux.add(new MessageItem(
                                     c.getString(c.getColumnIndex("id")),
@@ -1001,13 +1073,31 @@ public class ChatActivity extends AppCompatActivity implements MessagesNotSentIn
             socket.emit("private-message", jsonObjectData, new Ack() {
                 @Override
                 public void call(Object... args) {
-                    int position = indexOfId(id);
-                    ArrayList<String> alIds = new ArrayList<>();
-                    ArrayList<Integer> alStatuses = new ArrayList<>();
-                    alIds.add(id);
-                    alStatuses.add(RECEIVED);
-                    dataBaseHelper.updateMessagesStatus(alIds, alStatuses);
-                    updateUiMessageStatus(position, RECEIVED);
+                    JSONObject data = (JSONObject) args[0];
+                    int read = 0;
+                    try {
+                        read = data.getInt("read");
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    if (read == 1) {
+                        int position = indexOfId(id);
+                        ArrayList<String> alIds = new ArrayList<>();
+                        ArrayList<Integer> alStatuses = new ArrayList<>();
+                        alIds.add(id);
+                        alStatuses.add(VIEWED);
+                        dataBaseHelper.updateMessagesStatus(alIds, alStatuses);
+                        updateUiMessageStatus(position, VIEWED);
+                    } else {
+                        int position = indexOfId(id);
+                        ArrayList<String> alIds = new ArrayList<>();
+                        ArrayList<Integer> alStatuses = new ArrayList<>();
+                        alIds.add(id);
+                        alStatuses.add(RECEIVED);
+                        dataBaseHelper.updateMessagesStatus(alIds, alStatuses);
+                        updateUiMessageStatus(position, RECEIVED);
+                    }
+
                 }
             });
         } else {

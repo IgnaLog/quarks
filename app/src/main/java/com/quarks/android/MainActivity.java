@@ -137,6 +137,17 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
             socket.on("send-message", listeningMessages);
             socket.on("typing", onTyping);
             socket.on("stop-typing", onStopTyping);
+            JSONObject jsonObjectData = new JSONObject();
+            try {
+                // My user
+                jsonObjectData.put("userId", userId);
+                jsonObjectData.put("username", username);
+                jsonObjectData.put("fromConnected", 0);
+                jsonObjectData.put("activity", "conversationsActivity");
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            socket.emit("add-user", jsonObjectData);
         }
 
         /** DESIGN **/
@@ -197,16 +208,12 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                         // My user
                         jsonObjectData.put("userId", userId);
                         jsonObjectData.put("username", username);
+                        jsonObjectData.put("fromConnected", 1);
                         jsonObjectData.put("activity", "conversationsActivity");
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
-                    socket.emit("add-user", jsonObjectData, new Ack() {
-                        @Override
-                        public void call(Object... args) {
-
-                        }
-                    });
+                    socket.emit("add-user", jsonObjectData);
                 }
             });
         }
@@ -308,6 +315,7 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                 @Override
                 public void run() {
                     JSONObject data = (JSONObject) args[0];
+                    Ack ack = (Ack) args[args.length - 1];
                     String senderId = "";
                     String senderUsername = "";
                     String senderMessageId = "";
@@ -331,6 +339,14 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
                     dataBaseHelper.updateConversations(senderId, senderUsername, message, dateTime, 1);
 
                     reorganizeConversation(senderId, message, dateTime, 1, 0);
+
+                    JSONObject jsonObjectSuccess = new JSONObject();
+                    try {
+                        jsonObjectSuccess.put("activity", "ConversationsActivity");
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    ack.call(jsonObjectSuccess);
                 }
             });
         }
@@ -343,11 +359,26 @@ public class MainActivity extends AppCompatActivity implements ClickConversation
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                  //  JSONObject data = (JSONObject) args[0];
-                    Ack ack = (Ack) args[args.length -1];
+                    JSONArray messages = (JSONArray) args[0];
+                    Ack ack = (Ack) args[args.length - 1];
+                    try {
+                        if (messages != null) {
+                            ArrayList<String> alIds = new ArrayList<>();
+                            ArrayList<Integer> alStatuses = new ArrayList<>();
 
+                            for (int i = 0; i < messages.length(); i++) {
+                                JSONObject jsonObject = messages.getJSONObject(i);
+                                String id = jsonObject.getString("message_id");
+                                int status = jsonObject.getInt("status");
 
-
+                                alIds.add(id);
+                                alStatuses.add(status);
+                            }
+                            dataBaseHelper.updateMessagesStatus(alIds, alStatuses);
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
 
                     JSONObject jsonObjectSuccess = new JSONObject();
                     try {

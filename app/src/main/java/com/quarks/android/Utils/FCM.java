@@ -72,7 +72,7 @@ public class FCM extends FirebaseMessagingService {
         }
     }
 
-    public void sendMessageNotification(Context context, String userId, String username, String message, Map<String, List<Message>> mapMessages) {
+    public static void sendMessageNotification(Context context, String userId, String username, String message, Map<String, List<Message>> mapMessages) {
         notificationManager = NotificationManagerCompat.from(context); // Create notification manager
         createChannels();
         NotificationCompat.Action replyAction = createReplyAction(context, userId, username);
@@ -239,7 +239,7 @@ public class FCM extends FirebaseMessagingService {
     }
 
     /* For each user we keep a List of all the messages that that are entering inside a key value map. If a new user arrives, we create a new key-value */
-    private void storeMessage(String username, String message) {
+    private static void storeMessage(String username, String message) {
         if (mapMessages.containsKey(username)) {
             List<Message> myListMessages = mapMessages.get(username);
             myListMessages.add(new Message(message, username));

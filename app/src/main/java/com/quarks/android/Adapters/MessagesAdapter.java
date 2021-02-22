@@ -90,7 +90,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.Messag
                         holder.ivTick.setImageResource(R.drawable.ic_double_check);
                         break;
                     case VIEWED:
-                        holder.ivTick.setColorFilter(R.color.bg_blue_2);
+                        holder.ivTick.setImageResource(R.drawable.ic_viewed);
+                      //  holder.ivTick.setColorFilter(R.color.bg_blue_2);
                         break;
                 }
             }
