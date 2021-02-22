@@ -6,7 +6,12 @@
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
+/.idea/compiler.xml
+/.idea/dbnavigator.xml
+/.idea/jarRepositories.xml
+/.idea/vcs.xml
 /.idea/assetWizardSettings.xml
+/app/google-services.json
 .DS_Store
 /build
 /captures
